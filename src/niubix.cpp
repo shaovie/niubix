@@ -19,6 +19,7 @@
 
 static int g_argc = 0;
 static char **g_argv = nullptr;
+static char *master_log_path = nullptr;
 
 char *fmttime() {
     struct tm ttm;
@@ -31,7 +32,7 @@ char *fmttime() {
 static void master_log(const char *format, ...) {
   va_list argptr;
   ::va_start(argptr, format);
-  FILE *fp = ::fopen("niubix-master.log", "a+");
+  FILE *fp = ::fopen(master_log_path, "a+");
   if (fp == nullptr) {
       ::va_end(argptr);
       return;
@@ -80,6 +81,8 @@ void daemon() {
     if (fd > 2)
         ::close(fd);
 }
+// 1. stop   niubix `kill -TERM master_pid`
+// 2. reload niubix `kill -HUP  master_pid`
 pid_t exec_worker() {
     char **argv = new char *[g_argc + 4];
     for (int n = 0; n < g_argc; ++n)
@@ -130,6 +133,8 @@ void master_run(conf *cf) {
     g::pid = ::getpid();
     if (output_pid(cf->pid_file) != 0)
         ::exit(1);
+    
+    master_log("\n%s master run %d\n", fmttime(), g::pid);
     ::signal(SIGUSR1, new_worker_start_ok);
     ::signal(SIGHUP,  reload_worker);
     ::signal(SIGTERM, master_shutdown);
@@ -144,22 +149,22 @@ void master_run(conf *cf) {
         while (1) {
             int retpid = ::waitpid(-1, &status, 0);
             if (retpid == -1) {
-                master_log("%s parent catch child [%s]!\n", fmttime(), strerror(errno));
                 if (errno == EINTR)
                     continue ;
+                master_log("%s waitpid return error. master exit(1) [%s]\n", fmttime(), strerror(errno));
                 ::exit(1);
             }
             if (retpid == g::shutdown_child_pid) {
-                master_log("%s shutdown child:%d exit normally.\n", fmttime(), retpid);
+                master_log("%s child:%d shutdown\n", fmttime(), retpid);
                 g::shutdown_child_pid = 0;
                 continue;
             }
             if (WIFEXITED(status)) {
-                master_log("%s child exit normally, then master exit.\n", fmttime());
+                master_log("%s child:%d exit normally, then master exit\n", fmttime(), retpid);
                 ::exit(0); // worker exit normally.
             }
             if (WIFSIGNALED(status)) {
-                master_log("%s child %d exit by signal %d.\n", fmttime(), pid, WTERMSIG(status));
+                master_log("%s child:%d exit by signal %d\n", fmttime(), retpid, WTERMSIG(status));
                 // goto fork
             }
             break;
@@ -168,12 +173,15 @@ void master_run(conf *cf) {
     }
 }
 void new_worker_start_ok(int) {
-    if (g::shutdown_child_pid > 0)
-        ::kill(g::shutdown_child_pid, SIGUSR1);
+    if (g::shutdown_child_pid == 0)
+        return ;
+    master_log("%s master recv new worker start ok signal, then shutdown oldpid:%d\n",
+        fmttime(), g::shutdown_child_pid);
+    ::kill(g::shutdown_child_pid, SIGUSR1);
     // acceptor.close();
 }
 void worker_shutdown(int) {
-    log::info("worker recv shutdown signal.%d", g::pid);
+    log::info("worker:%d recv shutdown signal", g::pid);
     // leader::close_all();
     ::exit(0);
 }
@@ -231,6 +239,7 @@ int main(int argc, char *argv[]) {
     ::signal(SIGINT,  SIG_IGN);
 
     if (master_pid == 0) {
+        master_log_path = cf->master_log;
         daemon(); // master daemon
         
         master_run(cf);
@@ -243,7 +252,7 @@ int main(int argc, char *argv[]) {
     if (log::open(cf->log_dir, "niubix", cf->log_level) != 0)
         ::exit(1);
     
-    log::info("niubix worker start.");
+    log::info("niubix worker:%d start", g::pid);
     ::kill(master_pid, SIGUSR1); // start ok
                                  
     while (1) {
