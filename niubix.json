@@ -1,0 +1,48 @@
+{
+	"pid_file": "/tmp/niubix.pid",
+	"master_log": "/tmp/niubix-master.log",
+	"max_fds": 65535,
+	"?max_fds": "0 represents system default limits `ulimit -n`",
+	"?above": "The above are the master configuration",
+
+	"worker_num": 0,
+	"?worker_num": "0 represents the same number of CPUs",
+
+	"log_dir": "logs",
+	"log_level": "all",
+	"?log_level": "support `debug|info|warn|error|all|shutdown`, e.g. debug|warn",
+
+	"apps": [{
+		"listen": ":8080",
+		"?listen": "surpport :8080 or 192.168.1.101:8080 or []:8080",
+		"?listen": "[]:8080 represents ipv6 + ipv4 bind port 8080",
+
+		"protocol": "http",
+
+		"prolicy": "roundrobin",
+		"?prolicy": "roundrobin/weighted/random/iphash",
+
+		"host": "default",
+		"?host": "e.g. api.niubix.com",
+
+		"?connect_backend_timeout": "connect backend server timeout, > 0 in msec",
+		"connect_backend_timeout": 1000,
+
+		"health_check_timeout": 1000,
+		"?health_check_timeout": "in msec",
+
+		"health_check_uri": "/test",
+		"?health_check_uri": "GET method. Must start with /",
+		"?health_check_uri": "just return the http status code=200",
+		"?health_check_uri": "just for http-protocol",
+		"?health_check_uri": "empty represents do not check health",
+
+		"backends": [{
+			"weight": 50,
+			"?weight": "integer > 0. radio = weight/sum(backend0+backend1+...+backendN)*100",
+
+			"host": "192.168.1.101:8080",
+			"?host": "ip+port"
+		}]
+	}]
+}
