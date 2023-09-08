@@ -93,34 +93,32 @@ void evpoll::run() {
 
     while (true) {
         nfds = ::epoll_wait(efd, ready_events, evpoll_ready_events_size, -1);
-        if (nfds > 0) {
-            for (int i = 0; i < nfds; ++i) {
-                ev_itor = ready_events + i;
-                pd = (poll_desc*)(ev_itor->data.ptr);
+        for (int i = 0; i < nfds; ++i) {
+            ev_itor = ready_events + i;
+            pd = (poll_desc*)(ev_itor->data.ptr);
 
-                // EPOLLHUP refer to man 2 epoll_ctl
-                if (ev_itor->events & (EPOLLHUP|EPOLLERR)) {
-                    eh = pd->eh;
-                    this->remove(pd->fd, ev_handler::ev_all); // MUST before on_close
-                    eh->on_close();
-                    continue;
-                }
+            // EPOLLHUP refer to man 2 epoll_ctl
+            if (ev_itor->events & (EPOLLHUP|EPOLLERR)) {
+                eh = pd->eh;
+                this->remove(pd->fd, ev_handler::ev_all); // MUST before on_close
+                eh->on_close();
+                continue;
+            }
 
-                // MUST before EPOLLIN (e.g. connect)
-                if ((ev_itor->events & (EPOLLOUT)) && (pd->eh->on_write() == false)) {
-                    eh = pd->eh;
-                    this->remove(pd->fd, ev_handler::ev_all); // MUST before on_close
-                    eh->on_close();
-                    continue;
-                }
+            // MUST before EPOLLIN (e.g. connect)
+            if ((ev_itor->events & (EPOLLOUT)) && (pd->eh->on_write() == false)) {
+                eh = pd->eh;
+                this->remove(pd->fd, ev_handler::ev_all); // MUST before on_close
+                eh->on_close();
+                continue;
+            }
 
-                if ((ev_itor->events & (EPOLLIN)) && (pd->eh->on_read() == false)) {
-                    eh = pd->eh;
-                    this->remove(pd->fd, ev_handler::ev_all); // MUST before on_close
-                    eh->on_close();
-                    continue;
-                }
-            } // end of `for i < nfds'
-        }
+            if ((ev_itor->events & (EPOLLIN)) && (pd->eh->on_read() == false)) {
+                eh = pd->eh;
+                this->remove(pd->fd, ev_handler::ev_all); // MUST before on_close
+                eh->on_close();
+                continue;
+            }
+        } // end of `for i < nfds'
     }
 }
