@@ -84,7 +84,7 @@ int evpoll::remove(const int fd, const uint32_t ev) {
     return -1;
 }
 void evpoll::run() {
-    int nfds = 0, efd = this->efd;
+    int i = 0, nfds = 0, efd = this->efd;
     poll_desc *pd  = nullptr;
     ev_handler *eh = nullptr;
     struct epoll_event *ev_itor = nullptr;
@@ -93,7 +93,7 @@ void evpoll::run() {
 
     while (true) {
         nfds = ::epoll_wait(efd, ready_events, evpoll_ready_events_size, -1);
-        for (int i = 0; i < nfds; ++i) {
+        for (i = 0; i < nfds; ++i) {
             ev_itor = ready_events + i;
             pd = (poll_desc*)(ev_itor->data.ptr);
 
