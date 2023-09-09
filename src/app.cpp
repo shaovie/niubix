@@ -1,33 +1,33 @@
 #include "app.h"
+#include "log.h"
 #include "global.h"
 #include "worker.h"
 #include "leader.h"
 #include "acceptor.h"
+#include "http_conn.h"
 
 #include "nlohmann/json.hpp"
 
+#include <set>
 #include <memory>
 
-std::set<std::string> app::listen_set;
+std::map<std::string, int/*protocol*/> app::listen_set;
 std::unordered_map<std::string/*host*/, app::conf *> app::app_map;
 
 int app::load_conf(nlohmann::json &apps) {
     std::set<std::string> app_host_set;
+    std::set<std::string/*protocol:port*/> protocol_port_set;
     int i = 0;
     for (auto itor : apps) {
         i = app::app_map.size();
         std::unique_ptr<app::conf> ap(new app::conf());
         ap->listen = itor.value("listen", "");
-        if (ap->listen.length() == 0) {
-            fprintf(stderr, "niubix: conf - apps[%d].listen is empty!\n", i);
+        int port = 0;
+        std::string ip;
+        if (app::parse_ip_port(ap->listen, ip, port) == -1) {
+            fprintf(stderr, "niubix: conf - apps[%d].listen is invalid!\n", i);
             return -1;
         }
-        if (app::listen_set.count(ap->listen) == 1) {
-            fprintf(stderr, "niubix: conf - apps[%d].listen is duplicate, already exists!\n", i);
-            return -1;
-        }
-        app::listen_set.insert(ap->listen);
-
         ap->host = itor.value("host", "");
         if (ap->host.length() == 0) {
             fprintf(stderr, "niubix: conf - apps[%d].host is empty!\n", i);
@@ -45,11 +45,19 @@ int app::load_conf(nlohmann::json &apps) {
             return -1;
         }
 
-        ap->protocol = itor.value("protocol", "");
-        if (ap->protocol.length() == 0 || ap->protocol != "http") {
+        std::string protocol = itor.value("protocol", "");
+        if (protocol.length() == 0 || protocol != "http") {
             fprintf(stderr, "niubix: conf - apps[%d].protocol is invalid!\n", i);
             return -1;
         }
+        std::string protocol_port = protocol + ":" + std::to_string(port);
+        if (protocol_port_set.count(protocol_port) == 1) {
+            fprintf(stderr, "niubix: conf - apps[%d].listen + protocol is duplicate, already exists!\n", i);
+            return -1;
+        }
+        int protocolv = app::http_protocol;
+        app::listen_set[ap->listen] = protocolv;
+
         ap->connect_backend_timeout = itor.value("connect_backend_timeout", -1);
         if (ap->connect_backend_timeout < 1) {
             fprintf(stderr, "niubix: conf - apps[%d].connect_backend_timeout is invalid!\n", i);
@@ -61,7 +69,7 @@ int app::load_conf(nlohmann::json &apps) {
             return -1;
         }
         ap->health_check_uri = itor.value("health_check_uri", "");
-        if (ap->health_check_uri.length() > 0 && ap->protocol == "http") {
+        if (ap->health_check_uri.length() > 0 && ap->protocol == app::http_protocol) {
             if (ap->health_check_uri[0] != '/') {
                 fprintf(stderr, "niubix: conf - apps[%d].health_check_uri is invalid!\n", i);
                 return -1;
@@ -99,45 +107,16 @@ int app::load_conf(nlohmann::json &apps) {
 }
 int app::run_all(const ::conf *cf) {
     worker *workers = g::g_leader->get_workers();
-    for (int i = 0; g::g_leader->get_worker_num(); ++i) {
-        acceptor *acc = new acceptor(&workers[i], nullptr);
-        acc->open("", cf);
+    for (const auto &kv : app::listen_set) {
+        for (int i = 0; g::g_leader->get_worker_num(); ++i) {
+            acceptor *acc = nullptr;
+            if (kv.second == app::http_protocol)
+                acc = new acceptor(&workers[i], http_conn::new_conn_func);
+            if (acc->open(kv.first, cf) == -1) {
+                log::error("listen %s fail!", kv.first.c_str());
+                return -1;
+            }
+        }
     }
     return 0;
 }
-
-    /*
-    int poller_num = std::thread::hardware_concurrency();
-    if (argc > 1)
-        poller_num = atoi(argv[1]);
-
-    signal(SIGPIPE ,SIG_IGN);
-
-    g::g_reactor = new reactor();
-    options opt;
-    opt.set_cpu_affinity  = false;
-    opt.with_timer_shared = true;
-    opt.poller_num = 1;
-    if (g::g_reactor->open(opt) != 0) {
-        ::exit(1);
-    }
-
-    g::conn_reactor = new reactor();
-    opt.set_cpu_affinity  = true;
-    opt.with_timer_shared = false;
-    opt.poller_num = poller_num;
-    if (conn_reactor->open(opt) != 0) {
-        ::exit(1);
-    }
-
-    opt.reuse_addr = true;
-    for (int i = 0; i < opt.poller_num; ++i) {
-        acceptor *acc = new acceptor(g::conn_reactor, gen_conn);
-        if (acc->open(":8080", opt) != 0) {
-            ::exit(1);
-        }
-    }
-    g::conn_reactor->run(false);
-
-    g::g_reactor->run(true);
-    */

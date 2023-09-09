@@ -4,6 +4,7 @@
 #include "worker.h"
 #include "conf.h"
 #include "log.h"
+#include "app.h"
 
 #include <cstdio>
 #include <string>
@@ -74,19 +75,11 @@ int acceptor::tcp_open(const std::string &addr, const conf *cf) {
     socklen_t addr_len = sizeof(struct sockaddr_in);
     int port = 0;
     std::string ip;
+    if (app::parse_ip_port(addr, ip, port) == -1) {
+        log::error("accepor open fail! tcp listen addr invalid %s", addr.c_str());
+        return -1;
+    }
     if (addr[0] == '[') { // ipv6
-        auto p = addr.rfind(":");
-        if (p == addr.npos || (p > 0 && p < 2)) {
-            log::error("accepor open fail! ipv6 addr invalid %s", addr.c_str());
-            return -1;
-        }
-        ip = addr.substr(1, p - 1);
-        try {
-            port = std::stoi(addr.substr(p+1, addr.length() - p - 1)); // throw
-        } catch(...) {
-            log::error("accepor open fail! ipv6 addr invalid %s", addr.c_str());
-            return -1;
-        }
         addr_len = sizeof(struct sockaddr_in6);
         laddr.sockaddr_in6.sin6_family = AF_INET6;
         laddr.sockaddr_in6.sin6_port = ::htons(port);
@@ -94,18 +87,6 @@ int acceptor::tcp_open(const std::string &addr, const conf *cf) {
         if (ip.length() > 0)
             ::inet_pton(AF_INET6, ip.c_str(), &(laddr.sockaddr_in6.sin6_addr));
     } else {
-        auto p = addr.find(":");
-        if (p == addr.npos || (p > 0 && p < 7)) {
-            log::error("accepor open fail! ipv4 addr invalid %s", addr.c_str());
-            return -1;
-        }
-        ip = addr.substr(0, p);
-        try {
-            port = std::stoi(addr.substr(p+1, addr.length() - p - 1)); // throw
-        } catch(...) {
-            log::error("accepor open fail! ipv4 addr invalid %s", addr.c_str());
-            return -1;
-        }
         laddr.sockaddr_in.sin_family = AF_INET;
         laddr.sockaddr_in.sin_port = ::htons(port);
         laddr.sockaddr_in.sin_addr.s_addr = ::htonl(INADDR_ANY);

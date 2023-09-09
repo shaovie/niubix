@@ -34,6 +34,8 @@
                                          global.cpp \
                                          conf.cpp \
                                          log.cpp \
+                                         http_conn.cpp \
+                                         io_handle.cpp \
                                          evpoll.cpp \
                                          timer_qheap.cpp \
                                          niubix.cpp

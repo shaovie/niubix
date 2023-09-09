@@ -17,7 +17,8 @@ int worker::open(leader *l, const conf *cf) {
     if (this->poller->open(cf->max_fds) != 0)
         return -1;
 
-    this->io_buf = new char[cf->worker_io_buf_size];
+    this->io_buf_size = cf->worker_io_buf_size;
+    this->io_buf = new char[this->io_buf_size];
 
     this->timer = new timer_qheap(cf->timer_init_size);
     if (timer->open() == -1)

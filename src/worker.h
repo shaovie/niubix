@@ -17,6 +17,7 @@ class ev_handler;
 //
 class worker {
 public:
+    friend class io_handle;
     worker() = default;
 
     int open(leader *l, const conf *cf);
@@ -46,7 +47,7 @@ public:
     void set_cpu_id(const int id) { this->cpu_id = id; }
     void set_cpu_affinity();
     void destroy();
-private:
+
     void init_poll_sync_opt(const int t, void *arg);
     void do_poll_sync_opt(const int t, void *arg);
     void poll_cache_set(const int id, void *val, void (*free_func)(void *)) {
@@ -63,6 +64,7 @@ private:
     }
 private:
     int cpu_id = -1;
+    int io_buf_size = 0;
     evpoll *poller = nullptr;
     char *io_buf = nullptr;
     timer_qheap *timer = nullptr;

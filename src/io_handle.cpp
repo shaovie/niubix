@@ -1,31 +1,34 @@
 #include "io_handle.h"
-#include "poller.h"
+#include "worker.h"
+#include "defines.h"
+
+#include <cerrno>
+#include <cstring>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 char *io_handle::io_buf() {
-    return this->poll->io_buf;
+    return this->wrker->io_buf;
 }
 void *io_handle::poll_cache_get(const int id) {
-    return this->poll->poll_cache_get(id);;
+    return this->wrker->poll_cache_get(id);
 }
 int io_handle::recv(char* &buff) {
-    if (this->fd == -1)
+    if (unlikely(this->fd == -1))
         return -1;
     
     int ret = 0;
     do {
-        ret = ::recv(this->fd, this->poll->io_buf, this->poll->io_buf_size, 0);
+        ret = ::recv(this->fd, this->wrker->io_buf, this->wrker->io_buf_size, 0);
         if (ret > 0) {
-            buff = this->poll->io_buf;
+            buff = this->wrker->io_buf;
             break;
         }
     } while (ret == -1 && errno == EINTR);
     return ret;
 }
 int io_handle::send(const char *buff, const int len) {
-    if (!pthread_equal(pthread_self(), this->poll->thread_id))
-        return this->async_send(buff, len);
-
-    if (this->fd == -1)
+    if (unlikely(this->fd == -1))
         return -1;
     
     // sync send in poller thread
@@ -51,7 +54,7 @@ int io_handle::send(const char *buff, const int len) {
         this->async_send_buf_q.push_back(async_send_buf(bf, left));
         this->async_send_buf_size += left;
         if (this->async_send_polling == false) {
-            this->poll->append(this->fd, ev_handler::ev_write);
+            this->wrker->append_ev(this->fd, ev_handler::ev_write);
             this->async_send_polling = true;
         }
         ret = len;
@@ -78,16 +81,10 @@ bool io_handle::on_write() {
         break;
     }
     if (this->async_send_buf_q.empty() && this->async_send_polling == true) {
-        this->poll->remove(this->fd, ev_handler::ev_write);
+        this->wrker->remove_ev(this->fd, ev_handler::ev_write);
         this->async_send_polling = false;
     }
     return true;
-}
-int io_handle::async_send(const char *buff, const int len) {
-    char *bf = new char[len];
-    ::memcpy(bf, buff, len);
-    this->poll->push(async_send::item(this->fd, this->seq, async_send_buf(bf, len)));
-    return len;
 }
 void io_handle::sync_ordered_send(async_send_buf &asb) {
     if (this->fd == -1) {
@@ -115,7 +112,7 @@ void io_handle::sync_ordered_send(async_send_buf &asb) {
     }
     this->async_send_buf_q.push_back(asb);
     if (this->async_send_polling == false) {
-        this->poll->append(this->fd, ev_handler::ev_write);
+        this->wrker->append_ev(this->fd, ev_handler::ev_write);
         this->async_send_polling = true;
     }
 }

@@ -1,5 +1,5 @@
-#ifndef IO_HANDLE_H_
-#define IO_HANDLE_H_
+#ifndef NBX_IO_HANDLE_H_
+#define NBX_IO_HANDLE_H_
 
 #include "ev_handler.h"
 #include "ringq.h"
@@ -22,7 +22,6 @@ public:
 };
 
 class io_handle : public ev_handler {
-    friend class async_send;
 public:
     io_handle() = default;
 
@@ -37,11 +36,9 @@ public:
 private:
     virtual void sync_ordered_send(async_send_buf &asb);
 
-    int async_send(const char *buff, const int len);
-
     bool async_send_polling = false;
     int async_send_buf_size = 0;
     ringq<async_send_buf> async_send_buf_q{2};
 };
 
-#endif // IO_HANDLE_H_
+#endif // NBX_IO_HANDLE_H_
