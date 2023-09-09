@@ -1,6 +1,7 @@
 #include "poll_desc.h"
 #include "evpoll.h"
-#include "options.h"
+#include "ev_handler.h"
+#include "log.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -10,7 +11,7 @@
 int evpoll::open(const int max_fds) {
     this->efd = ::epoll_create1(EPOLL_CLOEXEC);
     if (this->efd == -1) {
-        fprintf(stderr, "niubix: epoll_create1 fail! %s\n", strerror(errno));
+        log::error("epoll_create1 fail! %s", strerror(errno));
         return -1;
     }
     this->poll_descs = new poll_desc_map(max_fds);

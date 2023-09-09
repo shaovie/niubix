@@ -1,8 +1,9 @@
 #include "log.h"
+#include "app.h"
 #include "conf.h"
 #include "global.h"
-//#include "leader.h"
-//#include "acceptor.h"
+#include "worker.h"
+#include "leader.h"
 
 #include <time.h>
 #include <fcntl.h>
@@ -21,7 +22,7 @@ static int g_argc = 0;
 static char **g_argv = nullptr;
 static char *master_log_path = nullptr;
 
-char *fmttime() {
+static char *fmttime() {
     struct tm ttm;
     static char time_buf[32] = {0};
     time_t t = ::time(nullptr);
@@ -41,7 +42,7 @@ static void master_log(const char *format, ...) {
   ::va_end(argptr);
   ::fclose(fp);
 }
-int set_max_fds(const int maxfds) {
+static int set_max_fds(const int maxfds) {
   struct rlimit limit;
   limit.rlim_cur = maxfds;
   limit.rlim_max = maxfds;
@@ -51,7 +52,7 @@ int set_max_fds(const int maxfds) {
   }
   return 0;
 }
-int output_pid(const char *file_name) {
+static int output_pid(const char *file_name) {
   char bf[32] = {0};
   int len = ::snprintf(bf, sizeof(bf), "%d", g::pid);
   int fd = ::open(file_name, O_CREAT|O_WRONLY, 0777);
@@ -59,12 +60,18 @@ int output_pid(const char *file_name) {
       master_log("%s write pid file failed! [%s]!\n", fmttime(), strerror(errno));
       return -1;
   }
-  ::ftruncate(fd, 0);
-  ::write(fd, bf, len);
+  if (::ftruncate(fd, 0) == -1) {
+      master_log("%s write pid file ftruncate failed! [%s]!\n", fmttime(), strerror(errno));
+      return -1;
+  }
+  if (::write(fd, bf, len) == -1) {
+      master_log("%s write pid file write failed! [%s]!\n", fmttime(), strerror(errno));
+      return -1;
+  }
   ::close(fd);
   return 0;
 }
-void daemon() {
+static void daemon() {
     int pid = ::fork();
     if (pid == -1) { // error
         fprintf(stderr, "niubix: fork failed! %s\n", strerror(errno));
@@ -83,7 +90,7 @@ void daemon() {
 }
 // 1. stop   niubix `kill -TERM master_pid`
 // 2. reload niubix `kill -HUP  master_pid`
-pid_t exec_worker() {
+static pid_t exec_worker() {
     char **argv = new char *[g_argc + 4];
     for (int n = 0; n < g_argc; ++n)
         argv[n] = ::strdup(g_argv[n]);
@@ -107,7 +114,7 @@ pid_t exec_worker() {
     delete[] argv;
     return pid;
 }
-void reload_worker(int) {
+static void reload_worker(int) {
     if (g::shutdown_child_pid > 0) {
         master_log("%s reload err: child:%d is shutting down\n", fmttime(), g::shutdown_child_pid);
         return ;
@@ -122,14 +129,14 @@ void reload_worker(int) {
     if (pid > 0)
         g::child_pid = pid;
 }
-void master_shutdown(int) {
+static void master_shutdown(int) {
     ::kill(g::child_pid, SIGUSR2);
     master_log("%s master recv shutdown signal, kill child:%d and self exit normally.\n",
         fmttime(), g::child_pid);
     ::exit(0);
 }
-void new_worker_start_ok(int);
-void master_run(conf *cf) {
+static void new_worker_start_ok(int);
+static void master_run(conf *cf) {
     g::pid = ::getpid();
     if (output_pid(cf->pid_file) != 0)
         ::exit(1);
@@ -172,7 +179,7 @@ void master_run(conf *cf) {
         ::usleep(50*1000); // 50msec
     }
 }
-void new_worker_start_ok(int) {
+static void new_worker_start_ok(int) {
     if (g::shutdown_child_pid == 0)
         return ;
     master_log("%s master recv new worker start ok signal, then shutdown oldpid:%d\n",
@@ -180,7 +187,7 @@ void new_worker_start_ok(int) {
     ::kill(g::shutdown_child_pid, SIGUSR1);
     // acceptor.close();
 }
-void worker_shutdown(int) {
+static void worker_shutdown(int) {
     log::info("worker:%d recv shutdown signal", g::pid);
     // leader::close_all();
     ::exit(0);
@@ -252,48 +259,17 @@ int main(int argc, char *argv[]) {
     if (log::open(cf->log_dir, "niubix", cf->log_level) != 0)
         ::exit(1);
     
+    if (g::init(cf) != 0) // global init
+        ::exit(1);
+
+    if (app::run_all(cf) != 0)
+        ::exit(1);
+
+    g::g_leader->run(false);
+
     log::info("niubix worker:%d start", g::pid);
-    ::kill(master_pid, SIGUSR1); // start ok
-                                 
-    while (1) {
-        ::sleep(5);
-    }
+    ::kill(master_pid, SIGUSR1); // Notify the master that the old worker can be shutdown.
 
-
-    /*
-    int poller_num = std::thread::hardware_concurrency();
-    if (argc > 1)
-        poller_num = atoi(argv[1]);
-
-    signal(SIGPIPE ,SIG_IGN);
-
-    g::g_reactor = new reactor();
-    options opt;
-    opt.set_cpu_affinity  = false;
-    opt.with_timer_shared = true;
-    opt.poller_num = 1;
-    if (g::g_reactor->open(opt) != 0) {
-        ::exit(1);
-    }
-
-    g::conn_reactor = new reactor();
-    opt.set_cpu_affinity  = true;
-    opt.with_timer_shared = false;
-    opt.poller_num = poller_num;
-    if (conn_reactor->open(opt) != 0) {
-        ::exit(1);
-    }
-
-    opt.reuse_addr = true;
-    for (int i = 0; i < opt.poller_num; ++i) {
-        acceptor *acc = new acceptor(g::conn_reactor, gen_conn);
-        if (acc->open(":8080", opt) != 0) {
-            ::exit(1);
-        }
-    }
-    g::conn_reactor->run(false);
-
-    g::g_reactor->run(true);
-    */
+    g::main_worker->run();
     return 0;
 }

@@ -1,16 +1,20 @@
-#ifndef NBX_REACTOR_H_
-#define NBX_REACTOR_H_
+#ifndef NBX_GLOBAL_H_
+#define NBX_GLOBAL_H_
 
 // Forward declarations
-class reactor;
+class worker;
+class leader;
+class conf;
 
 class g {
 public:
+    static int init(const conf *cf);
+
     static int pid;
     static int shutdown_child_pid;
     static int child_pid;
-    static reactor *conn_reactor;
-    static reactor *g_reactor;
+    static worker *main_worker;
+    static leader *g_leader;
 };
 
-#endif // NBX_REACTOR_H_
+#endif // NBX_GLOBAL_H_

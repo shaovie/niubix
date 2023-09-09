@@ -1,6 +1,8 @@
 #ifndef NBX_POLL_DESC_H_
 #define NBX_POLL_DESC_H_
 
+#include <cstdint>
+
 // Forward declarations
 class ev_handler;
 
