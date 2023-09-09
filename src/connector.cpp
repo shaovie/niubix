@@ -1,4 +1,5 @@
 #include "connector.h"
+#include "defines.h"
 #include "worker.h"
 
 #include "socket.h"
@@ -6,10 +7,11 @@
 
 class in_progress_connect : public ev_handler {
 public:
+    friend connector;
     in_progress_connect(connector *cn, ev_handler *eh) : cn(cn), eh(eh) { }
 
     virtual bool on_read() {
-        if (this->io_ev_trigger == true)
+        if (unlikely(this->io_ev_trigger == true))
             return true;
         this->eh->on_connect_fail(err_connect_fail);
         this->wrker->cancel_timer(this);
@@ -17,11 +19,11 @@ public:
         return false;
     }
     virtual bool on_write() {
-        if (this->io_ev_trigger == true)
+        if (unlikely(this->io_ev_trigger == true))
             return true;
         int fd = this->get_fd();
         this->set_fd(-1); // From here on, the `fd` resources will be managed by eh.
-        this->wrker->remove(fd, ev_handler::ev_all);
+        this->wrker->remove_ev(fd, ev_handler::ev_all);
         this->wrker->cancel_timer(this);
         this->io_ev_trigger = true;
 
@@ -35,7 +37,7 @@ public:
             return false;
         
         this->timeout_trigger = true;
-        this->wrker->remove(this->get_fd(), ev_handler::ev_all);
+        this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
         this->eh->on_connect_fail(err_connect_timeout);
         this->on_close();
         return false;
