@@ -5,6 +5,12 @@
 	"?max_fds": "0 represents system default limits `ulimit -n`",
 	"?above": "The above are the master configuration",
 
+	"set_cpu_affinity": true,
+	"?set_cpu_affinity": "true or false",
+
+	"io_buf_size": 32768,
+	"?io_buf_size": " > 0, default: 32768",
+
 	"worker_num": 0,
 	"?worker_num": "0 represents the same number of CPUs",
 
@@ -42,7 +48,7 @@
 			"?weight": "integer > 0. radio = weight/sum(backend0+backend1+...+backendN)*100",
 
 			"host": "192.168.1.101:8080",
-			"?host": "ip+port"
+			"?host": "ip+port or unix:/tmp/niubix.sock"
 		}]
 	}]
 }
