@@ -5,6 +5,9 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+#define likely(x)   __builtin_expect(!!(x),1)
+#define unlikely(x) __builtin_expect(!!(x),0)
+
 //= log
 #define MAX_LENGTH_OF_ONE_LOG                4095 
 #define MAX_FILE_NAME_LENGTH                 255

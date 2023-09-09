@@ -31,8 +31,8 @@ bool acceptor::on_read() {
     socklen_t socklen = 0;
     for (int i = 0; i < 64; ++i) {
         socklen = sizeof(nbx_sockaddr_t);
-        conn = ::accept4(fd, &peer_addr.sockaddr, &socklen, SOCK_NONBLOCK);
-        if (conn == -1) {
+        conn = ::accept4(fd, &peer_addr.sockaddr, &socklen, SOCK_NONBLOCK|SOCK_CLOEXEC);
+        if (unlikely(conn == -1)) {
             if (errno == EINTR) {
                 continue;
             } else if (errno == EMFILE || errno == ENFILE) {
@@ -43,7 +43,7 @@ bool acceptor::on_read() {
             break;
         }
         auto eh = this->new_conn_func();
-        if (eh == nullptr) {
+        if (unlikely(eh == nullptr)) {
             ::close(conn);
             break;
         }

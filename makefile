@@ -28,6 +28,7 @@
                               CPPFILES = \
                                          app.cpp \
                                          acceptor.cpp \
+                                         connector.cpp \
                                          worker.cpp \
                                          leader.cpp \
                                          global.cpp \

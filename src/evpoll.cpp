@@ -1,6 +1,7 @@
 #include "poll_desc.h"
-#include "evpoll.h"
 #include "ev_handler.h"
+#include "defines.h"
+#include "evpoll.h"
 #include "log.h"
 
 #include <errno.h>
@@ -18,10 +19,10 @@ int evpoll::open(const int max_fds) {
     return 0;
 }
 int evpoll::add(ev_handler *eh, const int fd, const uint32_t ev) {
-    if (fd < 0)
+    if (unlikely(fd < 0))
         return -1;
     auto pd = this->poll_descs->alloc(fd);
-    if (pd == nullptr)
+    if (unlikely(pd == nullptr))
         return -1;
     
     pd->fd = fd;
@@ -39,10 +40,10 @@ int evpoll::add(ev_handler *eh, const int fd, const uint32_t ev) {
     return -1;
 }
 int evpoll::append(const int fd, const uint32_t ev) {
-    if (fd < 0)
+    if (unlikely(fd < 0))
         return -1;
     auto pd = this->poll_descs->load(fd);
-    if (pd == nullptr)
+    if (unlikely(pd == nullptr))
         return -1;
 
     // Always save first, recover if failed  (this method is for multi-threading scenarios)."
@@ -57,7 +58,7 @@ int evpoll::append(const int fd, const uint32_t ev) {
     return -1;
 }
 int evpoll::remove(const int fd, const uint32_t ev) {
-    if (fd < 0)
+    if (unlikely(fd < 0))
         return -1;
     if (ev == ev_handler::ev_all) {
         this->poll_descs->del(fd);
@@ -65,7 +66,7 @@ int evpoll::remove(const int fd, const uint32_t ev) {
         return ::epoll_ctl(this->efd, EPOLL_CTL_DEL, fd, nullptr);
     }
     auto pd = this->poll_descs->load(fd);
-    if (pd == nullptr)
+    if (unlikely(pd == nullptr))
         return -1;
     if ((pd->events & (~ev)) == 0) {
         this->poll_descs->del(fd);
