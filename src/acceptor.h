@@ -3,11 +3,11 @@
 
 #include "ev_handler.h"
 
-#include <string.h>
+#include <string>
 
 // Forward declarations
+class conf;
 class worker;
-class options;
 struct sockaddr;
 
 class acceptor : public ev_handler {
@@ -19,16 +19,16 @@ public:
 
     // addr ipv4: "192.168.0.1:8080" or ":8080" or "unix:/tmp/xxxx.sock"
     // addr ipv6: "[::]:8080"
-    int open(const std::string &addr, const options &opt);
+    int open(const std::string &addr, const conf *cf);
     void close(); // must called in worker thread
     const std::string &get_listen_addr() { return this->listen_addr; }
 
     virtual bool on_read();
     virtual bool on_timeout(const int64_t);
 private:
-    int tcp_open(const std::string &addr, const options &opt);
+    int tcp_open(const std::string &addr, const conf *cf);
 
-    int uds_open(const std::string &addr, const options &opt);
+    int uds_open(const std::string &addr, const conf *cf);
 
     int listen(const int fd,
         const struct sockaddr *addr, socklen_t addrlen,

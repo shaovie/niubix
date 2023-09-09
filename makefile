@@ -21,14 +21,20 @@
                                   LIBS = -lpthread
                             OPTIM_FLAG = -O2
                                    CPP = g++
-                                LFLAGS = -Wl -fPIC
+                                LFLAGS = -W -fPIC
                               LIB_DIRS =
                                  VPATH = . src
                             OBJECT_DIR = ./.obj/
                               CPPFILES = \
+                                         app.cpp \
+                                         acceptor.cpp \
+                                         worker.cpp \
+                                         leader.cpp \
                                          global.cpp \
                                          conf.cpp \
                                          log.cpp \
+                                         evpoll.cpp \
+                                         timer_qheap.cpp \
                                          niubix.cpp
 
                                 CFILES = 

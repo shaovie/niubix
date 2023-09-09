@@ -26,7 +26,7 @@ timer_qheap::~timer_qheap() {
 int timer_qheap::open() {
     int fd = ::timerfd_create(CLOCK_BOOTTIME, TFD_NONBLOCK|TFD_CLOEXEC);
     if (fd == -1) {
-        fprintf(stderr, "reactor: timerfd_create fail! %s\n", strerror(errno));
+        fprintf(stderr, "niubix: timerfd_create fail! %s\n", strerror(errno));
         return -1;
     }
     this->tfd = fd;

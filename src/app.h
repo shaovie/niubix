@@ -1,6 +1,8 @@
 #ifndef NBX_ROUTER_H_
 #define NBX_ROUTER_H_
 
+#include "nlohmann/json_fwd.hpp"
+
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -47,9 +49,9 @@ public:
     };
 
 public:
-    static int load_conf();
+    static int load_conf(nlohmann::json &);
 
-    static int run_all(leader *l, const conf *cf);
+    static int run_all(const ::conf *cf);
 
 public:
     static std::set<std::string> listen_set;

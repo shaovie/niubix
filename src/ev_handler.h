@@ -7,8 +7,8 @@
 
 // Forward declarations
 class worker; 
-class reactor; 
 class timer_item; 
+class async_send_buf; 
 
 class ev_handler
 {
@@ -43,11 +43,16 @@ public:
 
   virtual void set_remote_addr(const struct sockaddr * /*addr*/, const socklen_t /*socklen*/) { };
 
+  virtual void sync_ordered_send(async_send_buf &) { }
+
   inline virtual int get_fd() const { return this->fd; }
   inline virtual void set_fd(const int v) { this->fd = v; }
 
   inline worker *get_worker() const { return this->wrker; }
-  inline reactor *get_reactor(void) const { return this->rct; }
+  inline void set_worker(worker *p) { this->wrker = p; }
+
+  inline timer_item *get_timer() { return this->ti; }
+  inline void set_timer(timer_item *t) { this->ti = t; }
 
   void destroy() {
       if (this->fd != -1) {
@@ -55,25 +60,14 @@ public:
           this->fd = -1;
       }
       this->wrker = nullptr;
-      this->rct   = nullptr;
       this->ti    = nullptr;
   }
-private:
-  virtual void sync_ordered_send(async_send_buf &) { }
 
-  inline void set_worker(worker *p) { this->wrker = p; }
-
-  inline void set_reactor(reactor *r) { this->rct = r; }
-
-  inline timer_item *get_timer() { return this->ti; }
-  inline void set_timer(timer_item *t) { this->ti = t; }
 protected:
   ev_handler() = default;
 
-private:
   int fd = -1;
   worker *wrker = nullptr;
-  reactor *rct = nullptr;
   timer_item *ti = nullptr;
 };
 

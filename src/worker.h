@@ -1,6 +1,7 @@
 #ifndef POLLER_H_
 #define POLLER_H_
 
+#include "evpoll.h"
 #include "timer_qheap.h"
 
 #include <pthread.h>
@@ -8,7 +9,8 @@
 #include <unordered_map>
 
 // Forward declarations
-class options;
+class conf;
+class leader;
 class ev_handler; 
 
 // worker 把poller融合在一起了, 这样层次简单一些
@@ -17,15 +19,14 @@ class worker {
 public:
     worker() = default;
 
-    int open(leader *l, const options &opt);
+    int open(leader *l, const conf *cf);
+    int close();
 
     //= timer
     inline int schedule_timer(ev_handler *eh, const int delay, const int interval) {
         return this->timer->schedule(eh, delay, interval);
     }
-    inline void cancel_timer(ev_handler *eh) {
-        this->timer->cancel(eh);
-    }
+    inline void cancel_timer(ev_handler *eh) { this->timer->cancel(eh); }
 
     //= io events
     inline int add_ev(ev_handler *eh, const int fd, const uint32_t ev) {
@@ -41,6 +42,10 @@ public:
 
     //= event loop
     void run();
+
+    void set_cpu_id(const int id) { this->cpu_id = id; }
+    void set_cpu_affinity();
+    void destroy();
 private:
     void init_poll_sync_opt(const int t, void *arg);
     void do_poll_sync_opt(const int t, void *arg);
@@ -57,12 +62,8 @@ private:
         return nullptr;
     }
 private:
-    void set_cpu_id(const int id) { this->cpu_id = id; }
-    void set_cpu_affinity();
-    void destroy();
-private:
     int cpu_id = -1;
-    int io_buf_size = 0;
+    evpoll *poller = nullptr;
     char *io_buf = nullptr;
     timer_qheap *timer = nullptr;
     leader *myleader = nullptr;
