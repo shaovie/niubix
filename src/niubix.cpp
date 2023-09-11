@@ -147,6 +147,7 @@ static void master_run(conf *cf) {
     ::signal(SIGTERM, master_shutdown);
 
     int status = 0;
+    time_t exception_exit_time = 0;
     while (1) {
         int pid = exec_worker();
         g::child_pid = pid;
@@ -172,6 +173,13 @@ static void master_run(conf *cf) {
             }
             if (WIFSIGNALED(status)) {
                 master_log("%s child:%d exit by signal %d\n", fmttime(), retpid, WTERMSIG(status));
+                auto now = time(nullptr);
+                if (now - exception_exit_time < 10) {
+                    master_log("%s child:%d exit by signal in %ld seconds, master exit\n",
+                        fmttime(), retpid, now - exception_exit_time);
+                    ::exit(0); // worker exit exception.
+                }
+                exception_exit_time = now;
                 // goto fork
             }
             break;

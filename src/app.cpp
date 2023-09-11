@@ -5,42 +5,44 @@
 #include "leader.h"
 #include "acceptor.h"
 #include "http_conn.h"
+#include "inet_addr.h"
 
 #include "nlohmann/json.hpp"
 
 #include <set>
 #include <memory>
 
-std::map<std::string, int/*protocol*/> app::listen_set;
-std::unordered_map<std::string/*host*/, app::conf *> app::app_map;
+std::unordered_map<int/*listen port*/, std::vector<app *> *> app::app_map_by_port;
+std::unordered_map<std::string/*listen*/, int/*protocol*/> app::listen_set;
+std::unordered_map<std::string/*host*/, app *> app::app_map_by_host;
 
 int app::load_conf(nlohmann::json &apps) {
     std::set<std::string> app_host_set;
     std::set<std::string/*protocol:port*/> protocol_port_set;
     int i = 0;
     for (auto itor : apps) {
-        i = app::app_map.size();
-        std::unique_ptr<app::conf> ap(new app::conf());
-        ap->listen = itor.value("listen", "");
+        i = app::app_map_by_host.size();
+        std::unique_ptr<app::conf> cf(new app::conf());
+        cf->listen = itor.value("listen", "");
         int port = 0;
         std::string ip;
-        if (app::parse_ip_port(ap->listen, ip, port) == -1) {
+        if (inet_addr::parse_ip_port(cf->listen, ip, port) == -1) {
             fprintf(stderr, "niubix: conf - apps[%d].listen is invalid!\n", i);
             return -1;
         }
-        ap->host = itor.value("host", "");
-        if (ap->host.length() == 0) {
+        cf->host = itor.value("host", "");
+        if (cf->host.length() == 0) {
             fprintf(stderr, "niubix: conf - apps[%d].host is empty!\n", i);
             return -1;
         }
-        if (app_host_set.count(ap->host) == 1) {
+        if (app_host_set.count(cf->host) == 1) {
             fprintf(stderr, "niubix: conf - apps[%d].host is duplicate, already exists!\n", i);
             return -1;
         }
-        app_host_set.insert(ap->host);
+        app_host_set.insert(cf->host);
 
-        ap->policy = app::parse_policy(itor.value("prolicy", ""));
-        if (ap->policy == -1) {
+        cf->policy = app::parse_policy(itor.value("prolicy", ""));
+        if (cf->policy == -1) {
             fprintf(stderr, "niubix: conf - apps[%d].policy is invalid!\n", i);
             return -1;
         }
@@ -56,21 +58,21 @@ int app::load_conf(nlohmann::json &apps) {
             return -1;
         }
         int protocolv = app::http_protocol;
-        app::listen_set[ap->listen] = protocolv;
+        app::listen_set[cf->listen] = protocolv;
 
-        ap->connect_backend_timeout = itor.value("connect_backend_timeout", -1);
-        if (ap->connect_backend_timeout < 1) {
+        cf->connect_backend_timeout = itor.value("connect_backend_timeout", -1);
+        if (cf->connect_backend_timeout < 1) {
             fprintf(stderr, "niubix: conf - apps[%d].connect_backend_timeout is invalid!\n", i);
             return -1;
         }
-        ap->health_check_timeout = itor.value("health_check_timeout", -1);
-        if (ap->health_check_timeout < 1) {
+        cf->health_check_timeout = itor.value("health_check_timeout", -1);
+        if (cf->health_check_timeout < 1) {
             fprintf(stderr, "niubix: conf - apps[%d].health_check_timeout is invalid!\n", i);
             return -1;
         }
-        ap->health_check_uri = itor.value("health_check_uri", "");
-        if (ap->health_check_uri.length() > 0 && ap->protocol == app::http_protocol) {
-            if (ap->health_check_uri[0] != '/') {
+        cf->health_check_uri = itor.value("health_check_uri", "");
+        if (cf->health_check_uri.length() > 0 && cf->protocol == app::http_protocol) {
+            if (cf->health_check_uri[0] != '/') {
                 fprintf(stderr, "niubix: conf - apps[%d].health_check_uri is invalid!\n", i);
                 return -1;
             }
@@ -83,9 +85,9 @@ int app::load_conf(nlohmann::json &apps) {
         }
         int j = 0;
         for (auto bv : backends) {
-            j = ap->backend_list.size();
+            j = cf->backend_list.size();
             std::unique_ptr<app::backend> bp(new app::backend());
-            if (ap->policy == app::weighted) {
+            if (cf->policy == app::weighted) {
                 bp->weight = bv.value("weight", -1);
                 if (bp->weight < 0) {
                     fprintf(stderr, "niubix: conf - apps[%d].backend[%d].weight is invalid!\n", i, j);
@@ -93,25 +95,42 @@ int app::load_conf(nlohmann::json &apps) {
                 }
             }
             bp->host = bv.value("host", "");
-            if (bp->host.length() == 0 || bp->host.find(":") == std::string::npos) {
+            struct sockaddr_in taddr;
+            if (bp->host.length() == 0 || inet_addr::parse_v4_addr(bp->host, &taddr) == -1) {
                 fprintf(stderr, "niubix: conf - apps[%d].backend[%d].host is empty!\n", i, j);
                 return -1;
             }
-            ap->backend_list.push_back(bp.release());
+            cf->backend_list.push_back(bp.release());
         } // end of `for (auto bv : backends)'
 
-        const std::string &host = ap->host;
-        app::app_map[host] = ap.release();
+        if (cf->backend_list.empty()) {
+            fprintf(stderr, "niubix: conf - apps[%d] backend is empty!\n", i);
+            return -1;
+        }
+        app *ap = new app();
+        ap->cf = cf.release();
+        app::app_map_by_host[ap->cf->host] = ap;
+
+        std::vector<app *> *vp = app::app_map_by_port[port];
+        if (vp == nullptr)
+            vp = new std::vector<app *>();
+        vp->push_back(ap);
+        app::app_map_by_port[port] = vp;
     } // end of `for (auto itor : apps)'
     return 0;
 }
 int app::run_all(const ::conf *cf) {
     worker *workers = g::g_leader->get_workers();
     for (const auto &kv : app::listen_set) {
-        for (int i = 0; g::g_leader->get_worker_num(); ++i) {
+        for (int i = 0; i < g::g_leader->get_worker_num(); ++i) {
             acceptor *acc = nullptr;
+            worker *wrker = &(workers[i]);
             if (kv.second == app::http_protocol)
-                acc = new acceptor(&workers[i], http_conn::new_conn_func);
+                acc = new acceptor(wrker, http_conn::new_conn_func);
+            if (acc == nullptr) {
+                log::error("invalid protocol %d", kv.second);
+                return -1;
+            }
             if (acc->open(kv.first, cf) == -1) {
                 log::error("listen %s fail!", kv.first.c_str());
                 return -1;

@@ -1,6 +1,8 @@
 #include "connector.h"
+#include "inet_addr.h"
 #include "defines.h"
 #include "worker.h"
+#include "log.h"
 
 #include "socket.h"
 #include "ev_handler.h"
@@ -23,13 +25,11 @@ public:
             return true;
         int fd = this->get_fd();
         this->set_fd(-1); // From here on, the `fd` resources will be managed by eh.
-        this->wrker->remove_ev(fd, ev_handler::ev_all);
         this->wrker->cancel_timer(this);
         this->io_ev_trigger = true;
 
+        this->ok = true;
         this->eh->set_fd(fd);
-        if (this->eh->on_open() == false)
-            this->eh->on_close();
         return false;
     }
     virtual bool on_timeout(const int64_t) {
@@ -47,9 +47,16 @@ public:
         if (this->timeout_trigger == false && this->io_ev_trigger == false)
             this->wrker->cancel_timer(this);
         this->destroy();
+
+        // eh部分不能在on_write里边调用, 因为fd对应的eh变化了，在poller中fd对应的eh
+        // 没有及时更新, 产生混乱
+        if (this->ok == true && this->eh->on_open() == false)
+            this->eh->on_close();
+
         delete this;
     }
 private:
+    bool ok = false;
     bool io_ev_trigger = false;
     bool timeout_trigger = false;
     connector *cn = nullptr;

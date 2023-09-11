@@ -161,8 +161,9 @@ int log::open(const char *dir, const char *filename_prefix, const char *lt) {
     }
     char *tok_p = NULL;
     char *token = NULL;
-    char bf[512] = {0};
+    char bf[128] = {0};
     ::strncpy(bf, lt, sizeof(bf));
+    bf[sizeof(bf) - 1] = '\0';
     int l_type = 0;
     for (token = ::strtok_r(bf, "|", &tok_p); 
          token != NULL;

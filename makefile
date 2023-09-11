@@ -26,18 +26,20 @@
                                  VPATH = . src
                             OBJECT_DIR = ./.obj/
                               CPPFILES = \
-                                         app.cpp \
                                          acceptor.cpp \
-                                         connector.cpp \
-                                         worker.cpp \
-                                         leader.cpp \
-                                         global.cpp \
+                                         app.cpp \
+                                         backend_conn.cpp \
                                          conf.cpp \
-                                         log.cpp \
+                                         connector.cpp \
+                                         evpoll.cpp \
+                                         global.cpp \
                                          http_conn.cpp \
                                          io_handle.cpp \
-                                         evpoll.cpp \
+                                         leader.cpp \
+                                         log.cpp \
                                          timer_qheap.cpp \
+                                         worker.cpp \
+                                         worker_timing_event.cpp \
                                          niubix.cpp
 
                                 CFILES = 

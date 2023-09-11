@@ -1,6 +1,8 @@
 #ifndef NBX_SOCKET_H_
 #define NBX_SOCKET_H_
 
+#include "inet_addr.h"
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -28,6 +30,38 @@ public:
     }
     static inline int close(const int fd) { return ::close(fd); }
 
+    static inline unsigned short get_port(const struct sockaddr *addr) {
+        if (addr->sa_family == AF_INET) {
+            struct sockaddr_in *v4 = (struct sockaddr_in *)addr;
+            return ::ntohl(v4->sin_port);
+        } else if (addr->sa_family == AF_INET6) {
+            struct sockaddr_in6 *v6 = (struct sockaddr_in6 *)addr;
+            return ::ntohl(v6->sin6_port);
+        }
+        return 0;
+    }
+    static inline int addr_to_string(const struct sockaddr *addr, char *buf, const int buf_len) {
+        const char *p = nullptr;
+        if (addr->sa_family == AF_INET) {
+            p = ::inet_ntop(AF_INET,
+                (void *)&(((struct sockaddr_in*)addr)->sin_addr),
+                buf, buf_len);
+        } else if (addr->sa_family == AF_INET6) {
+            if (buf_len < INET6_ADDRSTRLEN)
+                return -1;
+            p = ::inet_ntop(AF_INET6,
+                (void *)&(((struct sockaddr_in6*)addr)->sin6_addr),
+                buf, buf_len);
+        }
+        return p != nullptr ? 0 : -1;
+    }
+    static inline int get_local_addr(const int fd, char *buf, const int buf_len) {
+        nbx_sockaddr_t addr;
+        socklen_t slen = sizeof(nbx_sockaddr_t);
+        if (::getsockname(fd, &(addr.sockaddr), &slen) == -1)
+            return -1;
+        return socket::addr_to_string(&(addr.sockaddr), buf, buf_len);
+    }
     static inline int reuseaddr(const int fd, const int val) {
         return ::setsockopt(fd,
             SOL_SOCKET,

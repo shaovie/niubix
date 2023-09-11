@@ -4,7 +4,7 @@
 #include "worker.h"
 #include "conf.h"
 #include "log.h"
-#include "app.h"
+#include "inet_addr.h"
 
 #include <cstdio>
 #include <string>
@@ -49,6 +49,8 @@ bool acceptor::on_read() {
             break;
         }
 
+        eh->set_worker(this->wrker);
+        eh->set_acceptor(this);
         eh->set_remote_addr(&peer_addr.sockaddr, socklen);
         eh->set_fd(conn);
         if (eh->on_open() == false)
@@ -69,36 +71,37 @@ void acceptor::close() {
 // addr ipv4: "192.168.0.1:8080" or ":8080"
 // addr ipv6: "[2001:470:1f18:471::2]:8080" or "[]:8080"
 int acceptor::tcp_open(const std::string &addr, const conf *cf) {
-    struct sockaddr *listen_addr = nullptr;
     nbx_sockaddr_t laddr;
     ::memset(&laddr, 0, sizeof(laddr)); 
+    struct sockaddr *listen_sockaddr = (struct sockaddr *)&laddr;
     socklen_t addr_len = sizeof(struct sockaddr_in);
-    int port = 0;
     std::string ip;
-    if (app::parse_ip_port(addr, ip, port) == -1) {
+    if (inet_addr::parse_ip_port(addr, ip, this->port) == -1) {
         log::error("accepor open fail! tcp listen addr invalid %s", addr.c_str());
         return -1;
     }
+    int family = AF_INET;
     if (addr[0] == '[') { // ipv6
+        family = AF_INET6;
         addr_len = sizeof(struct sockaddr_in6);
         laddr.sockaddr_in6.sin6_family = AF_INET6;
-        laddr.sockaddr_in6.sin6_port = ::htons(port);
+        laddr.sockaddr_in6.sin6_port = ::htons(this->port);
         laddr.sockaddr_in6.sin6_addr = in6addr_any;
         if (ip.length() > 0)
             ::inet_pton(AF_INET6, ip.c_str(), &(laddr.sockaddr_in6.sin6_addr));
     } else {
         laddr.sockaddr_in.sin_family = AF_INET;
-        laddr.sockaddr_in.sin_port = ::htons(port);
+        laddr.sockaddr_in.sin_port = ::htons(this->port);
         laddr.sockaddr_in.sin_addr.s_addr = ::htonl(INADDR_ANY);
         if (ip.length() > 0)
             ::inet_pton(AF_INET, ip.c_str(), &(laddr.sockaddr_in.sin_addr));
     }
-    if (port < 1 || port > 65535) {
+    if (this->port < 1 || this->port > 65535) {
         log::error("accepor open fail! port invalid");
         return -1;
     }
 
-    int fd = ::socket(AF_INET6, SOCK_STREAM|SOCK_NONBLOCK|SOCK_CLOEXEC, 0);
+    int fd = ::socket(family, SOCK_STREAM|SOCK_NONBLOCK|SOCK_CLOEXEC, 0);
     if (fd == -1) {
         log::error("create listen socket fail! %s", strerror(errno));
         return -1;
@@ -125,7 +128,7 @@ int acceptor::tcp_open(const std::string &addr, const conf *cf) {
         return -1;
     }
     this->listen_addr = addr;
-    return this->listen(fd, listen_addr, addr_len, cf->backlog);
+    return this->listen(fd, listen_sockaddr, addr_len, cf->backlog);
 }
 int acceptor::uds_open(const std::string &addr, const conf *cf) {
     struct sockaddr_un laddr;

@@ -33,7 +33,8 @@ private:
     int listen(const int fd,
         const struct sockaddr *addr, socklen_t addrlen,
         const int backlog);
-private:
+public:
+    int port = 0;
     std::string listen_addr;
     new_conn_func_t new_conn_func;
 };

@@ -1,5 +1,5 @@
-#ifndef POLLER_H_
-#define POLLER_H_
+#ifndef NBX_WORKER_H_
+#define NBX_WORKER_H_
 
 #include "evpoll.h"
 #include "timer_qheap.h"
@@ -11,6 +11,7 @@
 // Forward declarations
 class conf;
 class leader;
+class connector;
 class ev_handler; 
 
 // worker 把poller融合在一起了, 这样层次简单一些
@@ -18,6 +19,7 @@ class ev_handler;
 class worker {
 public:
     friend class io_handle;
+    friend class worker_cache_time;
     worker() = default;
 
     int open(leader *l, const conf *cf);
@@ -62,15 +64,19 @@ public:
             return itor->second;
         return nullptr;
     }
-private:
+public:
     int cpu_id = -1;
-    int io_buf_size = 0;
+    int rio_buf_size = 0;
+    int wio_buf_size = 0;
+    int64_t now_msec = 0;
     evpoll *poller = nullptr;
-    char *io_buf = nullptr;
+    char *rio_buf = nullptr;
+    char *wio_buf = nullptr;
     timer_qheap *timer = nullptr;
-    leader *myleader = nullptr;
+    leader *ld = nullptr;
+    connector *conn = nullptr;
     pthread_t thread_id;
     std::unordered_map<int, void *> pcache;
 };
 
-#endif // POLLER_H_
+#endif // NBX_WORKER_H_

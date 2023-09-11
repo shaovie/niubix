@@ -2,6 +2,7 @@
 #include "worker.h"
 #include "conf.h"
 #include "ev_handler.h"
+#include "worker_timing_event.h"
 
 #include <errno.h>
 #include <string.h>
@@ -19,6 +20,9 @@ int leader::open(const conf *cf) {
         }
         if (this->workers[i].open(this, cf) != 0)
             return -1;
+
+        worker_cache_time *wct = new worker_cache_time(&this->workers[i]);
+        this->workers[i].schedule_timer(wct, i, 80);
     }
     return 0;
 }

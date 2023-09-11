@@ -7,9 +7,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-char *io_handle::io_buf() {
-    return this->wrker->io_buf;
-}
 void *io_handle::poll_cache_get(const int id) {
     return this->wrker->poll_cache_get(id);
 }
@@ -19,9 +16,9 @@ int io_handle::recv(char* &buff) {
     
     int ret = 0;
     do {
-        ret = ::recv(this->fd, this->wrker->io_buf, this->wrker->io_buf_size, 0);
+        ret = ::recv(this->fd, this->wrker->rio_buf, this->wrker->rio_buf_size, 0);
         if (ret > 0) {
-            buff = this->wrker->io_buf;
+            buff = this->wrker->rio_buf;
             break;
         }
     } while (ret == -1 && errno == EINTR);
