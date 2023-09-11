@@ -9,7 +9,7 @@ Just a reverse proxy service that surpasses Nignx
 **nginx config**
 ```
 server {
-    listen       8082;
+    listen       8082 reuseport;
     server_name  localhost;
 
     access_log  off;
@@ -33,14 +33,15 @@ wrk -t 2 -c 10 -d 10s  http://127.0.0.1:8082/xxx
 Running 10s test @ http://127.0.0.1:8082/xxx
   2 threads and 10 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     1.16ms  425.71us   9.03ms   71.12%
-    Req/Sec     4.34k   416.69     5.55k    77.23%
-  87284 requests in 10.10s, 14.15MB read
-Requests/sec:   8642.17
-Transfer/sec:      1.40MB
+    Latency   684.95us  839.33us  10.35ms   94.72%
+    Req/Sec     9.08k   787.37    11.40k    65.50%
+  180796 requests in 10.00s, 57.24MB read
+  Non-2xx or 3xx responses: 180796
+Requests/sec:  18077.90
+Transfer/sec:      5.72MB
 ```
 
-**niubix 测试反向代理能力, 响应速度和并发处理能力表现都不错, 吞吐能力是nginx的近5位**
+**niubix 测试反向代理能力, 响应速度和并发处理能力表现都不错, 吞吐能力超过nginx的2倍**
 ```
 wrk -t 2 -c 10 -d 10s  http://127.0.0.1:8081/xxx
 Running 10s test @ http://127.0.0.1:8081/xxx
