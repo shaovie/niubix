@@ -6,7 +6,7 @@ Just a reverse proxy service that surpasses Nignx
 
 > Test environment GCP cloud VM, 2 cores, 4GB RAM
 
-*nginx config*
+**nginx config**
 ```
 server {
     listen       8082;
@@ -27,7 +27,7 @@ www-data  417322     516  0 12:13 ?        00:00:06 nginx: worker process
 www-data  417323     516  0 12:13 ?        00:00:08 nginx: worker process
 ```
 
-*nginx 测试反向代理能力*
+**nginx 测试反向代理能力**
 ```
 wrk -t 2 -c 10 -d 10s  http://127.0.0.1:8082/xxx
 Running 10s test @ http://127.0.0.1:8082/xxx
@@ -40,7 +40,7 @@ Requests/sec:   8642.17
 Transfer/sec:      1.40MB
 ```
 
-*niubix 测试反向代理能力, 响应速度和并发处理能力表现都不错, 吞吐能力是nginx的近5位*
+**niubix 测试反向代理能力, 响应速度和并发处理能力表现都不错, 吞吐能力是nginx的近5位**
 ```
 wrk -t 2 -c 10 -d 10s  http://127.0.0.1:8081/xxx
 Running 10s test @ http://127.0.0.1:8081/xxx
@@ -53,7 +53,7 @@ Requests/sec:  41693.22
 Transfer/sec:      6.12MB
 ```
 
-*单独测试后端程序处理能力, 不存在吞吐量瓶颈*
+**单独测试后端程序处理能力, 不存在吞吐量瓶颈**
 
 ```
 wrk -t 2 -c 10 -d 10s  http://127.0.0.1:8080/xxx
