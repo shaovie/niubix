@@ -73,10 +73,10 @@ Transfer/sec:      8.73MB
 * 只是初步测试, 并没有做冒烟测试和稳定性测试以及多条件下复杂测试
 * 全部都是在单机完成, 测试环境有限, 也没做多个backend均衡测试
 * niubix仅提供反向代理功能
-* 以上测试niubix均衡测试使用的是roundrobin(别的也还没实现呢)
+* niubix均衡策略使用的是roundrobin(别的也还没实现呢), nginx也是一样的策略
 * backend 测试程序[code](https://github.com/shaovie/reactor/blob/main/example/techempower.cpp)
 * niubix刚刚完成, 只实现了http协议, 也没有做优化工作
-* 我相信这是一个好的开始
+* 功能逐步完善中, 基本框架是过硬的, 我相信这是一个好的开始
 
 ## Development Roadmap
 
