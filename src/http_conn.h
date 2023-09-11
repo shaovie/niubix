@@ -31,6 +31,7 @@ private:
     bool handle_request(const char *buf, int len);
     int a_complete_request(const char *buf, const int len,
         const int header_line_end,
+        const bool has_x_real_ip,
         const char *xff_start,
         const int xff_len);
     private:

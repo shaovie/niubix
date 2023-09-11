@@ -124,46 +124,6 @@ bool http_conn::on_read() {
                                ::memcpy(this->partial_buf, buf, len - buf_offset); \
                                this->partial_buf_len = len; \
                            }
-/* Tokens as defined by rfc 2616. Also lowercases them.
- *        token       = 1*<any CHAR except CTLs or separators>
- *     separators     = "(" | ")" | "<" | ">" | "@"
- *                    | "," | ";" | ":" | "\" | <">
- *                    | "/" | "[" | "]" | "?" | "="
- *                    | "{" | "}" | SP | HT
- */
-static const char tokens[256] = {
-/*   0 nul    1 soh    2 stx    3 etx    4 eot    5 enq    6 ack    7 bel */
-    0,       0,       0,       0,       0,       0,       0,       0,
-/*   8 bs     9 ht    10 nl    11 vt    12 np    13 cr    14 so    15 si  */
-    0,       0,       0,       0,       0,       0,       0,       0,
-/*  16 dle   17 dc1   18 dc2   19 dc3   20 dc4   21 nak   22 syn   23 etb */
-    0,       0,       0,       0,       0,       0,       0,       0,
-/*  24 can   25 em    26 sub   27 esc   28 fs    29 gs    30 rs    31 us  */
-    0,       0,       0,       0,       0,       0,       0,       0,
-/*  32 sp    33  !    34  "    35  #    36  $    37  %    38  &    39  '  */
-    ' ',     '!',      0,      '#',     '$',     '%',     '&',    '\'',
-/*  40  (    41  )    42  *    43  +    44  ,    45  -    46  .    47  /  */
-    0,       0,      '*',     '+',      0,      '-',     '.',      0,
-/*  48  0    49  1    50  2    51  3    52  4    53  5    54  6    55  7  */
-    '0',     '1',     '2',     '3',     '4',     '5',     '6',     '7',
-/*  56  8    57  9    58  :    59  ;    60  <    61  =    62  >    63  ?  */
-    '8',     '9',      0,       0,       0,       0,       0,       0,
-/*  64  @    65  A    66  B    67  C    68  D    69  E    70  F    71  G  */
-    0,      'a',     'b',     'c',     'd',     'e',     'f',     'g',
-/*  72  H    73  I    74  J    75  K    76  L    77  M    78  N    79  O  */
-    'h',     'i',     'j',     'k',     'l',     'm',     'n',     'o',
-/*  80  P    81  Q    82  R    83  S    84  T    85  U    86  V    87  W  */
-    'p',     'q',     'r',     's',     't',     'u',     'v',     'w',
-/*  88  X    89  Y    90  Z    91  [    92  \    93  ]    94  ^    95  _  */
-    'x',     'y',     'z',      0,       0,       0,      '^',     '_',
-/*  96  `    97  a    98  b    99  c   100  d   101  e   102  f   103  g  */
-    '`',     'a',     'b',     'c',     'd',     'e',     'f',     'g',
-/* 104  h   105  i   106  j   107  k   108  l   109  m   110  n   111  o  */
-    'h',     'i',     'j',     'k',     'l',     'm',     'n',     'o',
-/* 112  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w  */
-    'p',     'q',     'r',     's',     't',     'u',     'v',     'w',
-/* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
-    'x',     'y',     'z',      0,      '|',      0,      '~',       0 };
 
 bool http_conn::handle_request(const char *rbuf, int rlen) {
     if (this->partial_buf_len > 0) {
@@ -228,10 +188,11 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
         }
         if (buf[buf_offset] == '\r' && buf[buf_offset+1] == '\n') {
             // GET / HTTP/1.x\r\n\r\n
-            this->a_complete_request(buf, buf_offset+1+1, header_line_end, nullptr, 0);
+            this->a_complete_request(buf, buf_offset+1+1, header_line_end, false, nullptr, 0);
             return true;
         }
 
+        bool has_x_real_ip = false;
         // 3 header fileds key:value\r\n
         for(; buf_offset < len;) {
             const char *start = buf + buf_offset;
@@ -242,11 +203,17 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
                 save_partial_buf();
                 return true;
             }
-            if (p - start + 1 >= (int)sizeof("X-Forwarded-For:0.0.0.0" - 1)
-                && ::strncasecmp(start, "X-Forwarded-For:", sizeof("X-Forwarded-For:" - 1)) == 0) {
-                xff_start = start;
-                xff_len = p - 1 - start;
-                break;
+            if (!has_x_real_ip
+                && p - start + 1 >= (int)sizeof("X-Real-IP:" - 1)
+                && ::strncasecmp(start, "X-Real-IP:", sizeof("X-Real-IP:" - 1)) == 0) {
+                has_x_real_ip = true;
+            } else {
+                if (p - start + 1 >= (int)sizeof("X-Forwarded-For:0.0.0.0" - 1)
+                    && ::strncasecmp(start, "X-Forwarded-For:", sizeof("X-Forwarded-For:" - 1)) == 0) {
+                    xff_start = start;
+                    xff_len = p - 1 - start;
+                    break;
+                }
             }
             buf_offset += p - start + 1;
         }
@@ -256,51 +223,46 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
             return true;
         }
         if (buf[buf_offset] == '\r' && buf[buf_offset+1] == '\n')
-            this->a_complete_request(buf, buf_offset+1+1, header_line_end, xff_start, xff_len);
+            this->a_complete_request(buf, buf_offset+1+1, header_line_end, has_x_real_ip, xff_start, xff_len);
 
         buf_offset += 2;
     } while (true);
+
     return true;
-        /*
-end:
-buf_offset += 2;
-if (buf_offset != len) {
-log::error("Unknown request %s", buf); // only support ping/pong mode, not support pipeling
-return false;
-}
-return true;
-*/
 }
 int http_conn::a_complete_request(const char *buf, const int len,
     const int header_line_end,
+    const bool has_x_real_ip,
     const char *xff_start,
     const int xff_len) {
 
-    char tbuf[4096];
-    ::memcpy(tbuf, buf, header_line_end);
+    char hbuf[4096];
+    ::memcpy(hbuf, buf, header_line_end);
     int copy_len = header_line_end;
-    ::memcpy(tbuf + copy_len, "X-Real-IP: ", sizeof("X-Real-IP: ") - 1);
-    copy_len += sizeof("X-Real-IP: ") - 1;
-    ::memcpy(tbuf + copy_len, this->remote_addr, this->remote_addr_len);
-    copy_len += this->remote_addr_len;
-    ::memcpy(tbuf + copy_len, "\r\n", 2);
-    copy_len += 2;
-
-    if (xff_start == nullptr) { // add
-        ::memcpy(tbuf + copy_len, "X-Forwarded-For: ", sizeof("X-Forwarded-For: ") - 1);
-        copy_len += sizeof("X-Forwarded-For: ") - 1;
-    } else {
-        ::memcpy(tbuf + copy_len, xff_start, xff_len);
-        copy_len += xff_len - 2/*CRLF*/;
-        ::memcpy(tbuf + copy_len, ", ", 2);
+    if (has_x_real_ip == false) {
+        ::memcpy(hbuf + copy_len, "X-Real-IP: ", sizeof("X-Real-IP: ") - 1);
+        copy_len += sizeof("X-Real-IP: ") - 1;
+        ::memcpy(hbuf + copy_len, this->remote_addr, this->remote_addr_len);
+        copy_len += this->remote_addr_len;
+        ::memcpy(hbuf + copy_len, "\r\n", 2);
         copy_len += 2;
     }
-    ::memcpy(tbuf + copy_len, this->local_addr, this->local_addr_len);
+
+    if (xff_start == nullptr) { // add
+        ::memcpy(hbuf + copy_len, "X-Forwarded-For: ", sizeof("X-Forwarded-For: ") - 1);
+        copy_len += sizeof("X-Forwarded-For: ") - 1;
+    } else {
+        ::memcpy(hbuf + copy_len, xff_start, xff_len);
+        copy_len += xff_len - 2/*CRLF*/;
+        ::memcpy(hbuf + copy_len, ", ", 2);
+        copy_len += 2;
+    }
+    ::memcpy(hbuf + copy_len, this->local_addr, this->local_addr_len);
     copy_len += this->local_addr_len;
-    ::memcpy(tbuf + copy_len, "\r\n", 2);
+    ::memcpy(hbuf + copy_len, "\r\n", 2);
     copy_len += 2;
-    tbuf[copy_len] = '\0';
-    this->backend->send(tbuf, copy_len);
+
+    this->backend->send(hbuf, copy_len);
     this->backend->send(buf + header_line_end, len - header_line_end);
     return true;
 }
