@@ -4,7 +4,9 @@ Just a reverse proxy service that surpasses Nignx
 
 ### 与Nginx 对比测试
 
-> Test environment GCP cloud VM, 2 cores, 4GB RAM
+> Test environment
+> Instacne 1 GCP cloud VM, 2 cores, 4GB RAM 10.146.0.2 (nginx, niubix run at here)
+> Instacne 2 GCP cloud VM, 2 cores, 4GB RAM 10.146.0.3 (backend, wrk run at here)
 
 **nginx config**
 ```
@@ -16,7 +18,7 @@ server {
     error_log off;
 
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://10.146.0.3:8080;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
@@ -29,54 +31,61 @@ www-data  417323     516  0 12:13 ?        00:00:08 nginx: worker process
 
 **nginx 测试反向代理能力**
 ```
-wrk -t 2 -c 10 -d 10s  http://127.0.0.1:8082/xxx
-Running 10s test @ http://127.0.0.1:8082/xxx
-  2 threads and 10 connections
+run at 10.146.0.3
+
+wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8082/xxx
+Running 10s test @ http://10.146.0.2:8082/xxx
+  2 threads and 100 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency   684.95us  839.33us  10.35ms   94.72%
-    Req/Sec     9.08k   787.37    11.40k    65.50%
-  180796 requests in 10.00s, 57.24MB read
-  Non-2xx or 3xx responses: 180796
-Requests/sec:  18077.90
-Transfer/sec:      5.72MB
+    Latency    55.71ms   52.58ms 226.45ms   70.15%
+    Req/Sec     1.06k     2.29k   10.04k    92.00%
+  21059 requests in 10.01s, 3.41MB read
+Requests/sec:   2103.96
+Transfer/sec:    349.22KB
 ```
+**nginx测试局域网环境,数据很差,目前还没找到原因,cpu也能跑满,但是就是qps上不去**
+
 
 **niubix 测试反向代理能力, 响应速度和并发处理能力表现都不错, 吞吐能力超过nginx的2倍**
 ```
-wrk -t 2 -c 10 -d 10s  http://127.0.0.1:8081/xxx
-Running 10s test @ http://127.0.0.1:8081/xxx
-  2 threads and 10 connections
+run at 10.146.0.3
+
+wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8081/xxx
+Running 10s test @ http://10.146.0.2:8081/xxx
+  2 threads and 100 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency   443.05us  457.43us  21.74ms   98.95%
-    Req/Sec    21.05k     2.30k   42.63k    95.52%
-  421099 requests in 10.10s, 61.85MB read
-Requests/sec:  41693.22
-Transfer/sec:      6.12MB
+    Latency     2.20ms    1.43ms  20.03ms   66.98%
+    Req/Sec    36.82k     1.90k   39.80k    82.50%
+  736359 requests in 10.06s, 108.15MB read
+  Socket errors: connect 0, read 7, write 0, timeout 0
+Requests/sec:  73222.56
+Transfer/sec:     10.75MB
+
 ```
 
 **单独测试后端程序处理能力, 不存在吞吐量瓶颈**
 
 ```
-wrk -t 2 -c 10 -d 10s  http://127.0.0.1:8080/xxx
-Running 10s test @ http://127.0.0.1:8080/xxx
-  2 threads and 10 connections
+run at 10.146.0.2
+
+wrk -t 2 -c 100 -d 10s  http://10.146.0.3:8080/xxx
+Running 10s test @ http://10.146.0.3:8080/xxx
+  2 threads and 100 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency   123.60us  308.52us  12.35ms   99.39%
-    Req/Sec    30.00k     1.15k   36.99k    86.07%
-  600135 requests in 10.10s, 88.14MB read
-Requests/sec:  59418.82
-Transfer/sec:      8.73MB
+    Latency   520.95us  203.98us   4.09ms   68.03%
+    Req/Sec    59.25k     2.68k   63.62k    52.50%
+  1179133 requests in 10.00s, 173.17MB read
+Requests/sec: 117888.45
+Transfer/sec:     17.31MB
 ```
 ### 测试声明
 
+* niubix仅提供反向代理功能
 * niubix 支持X-Real-IP,  X-Forwarded-For, 其他Header并没有解析  
 * http parser只是一个非常简单的解析, 并没有完全实现
 * 只是初步测试, 并没有做冒烟测试和稳定性测试以及多条件下复杂测试
-* 全部都是在单机完成, 测试环境有限, 也没做多个backend均衡测试
-* niubix仅提供反向代理功能
 * niubix均衡策略使用的是roundrobin(别的也还没实现呢), nginx也是一样的策略
 * backend 测试程序[code](https://github.com/shaovie/reactor/blob/main/example/techempower.cpp)
-* niubix刚刚完成, 只实现了http协议, 也没有做优化工作
 * 功能逐步完善中, 基本框架是过硬的, 我相信这是一个好的开始
 
 ## Development Roadmap
