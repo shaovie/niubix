@@ -17,7 +17,6 @@ std::unordered_map<std::string/*listen*/, int/*protocol*/> app::listen_set;
 std::unordered_map<std::string/*host*/, app *> app::app_map_by_host;
 
 int app::load_conf(nlohmann::json &apps) {
-    std::set<std::string> app_host_set;
     std::set<std::string/*protocol:port*/> protocol_port_set;
     int i = 0;
     for (auto itor : apps) {
@@ -35,11 +34,10 @@ int app::load_conf(nlohmann::json &apps) {
             fprintf(stderr, "niubix: conf - apps[%d].host is empty!\n", i);
             return -1;
         }
-        if (app_host_set.count(cf->host) == 1) {
+        if (app::app_map_by_host.count(cf->host) == 1) {
             fprintf(stderr, "niubix: conf - apps[%d].host is duplicate, already exists!\n", i);
             return -1;
         }
-        app_host_set.insert(cf->host);
 
         cf->policy = app::parse_policy(itor.value("prolicy", ""));
         if (cf->policy == -1) {

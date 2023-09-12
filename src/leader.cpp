@@ -18,7 +18,7 @@ int leader::open(const conf *cf) {
             int cpu_id = i % cpu_num;
             this->workers[i].set_cpu_id(cpu_id);
         }
-        if (this->workers[i].open(this, cf) != 0)
+        if (this->workers[i].open(this, i, cf) != 0)
             return -1;
 
         worker_cache_time *wct = new worker_cache_time(&this->workers[i]);

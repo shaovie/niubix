@@ -10,6 +10,12 @@ class backend_conn;
 
 class http_conn: public frontend_conn {
 public:
+    enum {
+        new_ok      = 0;
+        conn_ok     = 1;
+        active_ok   = 2; // add ev to poll
+        closed      = 3; // add ev to poll
+    };
     http_conn() = default;
     virtual ~http_conn();
     static ev_handler *new_conn_func() { return new http_conn(); }
@@ -23,8 +29,11 @@ public:
 
     virtual void on_close();
 
-    virtual int on_backend_connect_ok();
-    virtual void on_backend_connect_fail(const int /*err*/);
+    virtual void backend_connect_ok();
+    virtual void on_backend_connect_ok();
+    virtual void backend_connect_fail();
+    virtual void on_backend_connect_fail();
+    virtual void backend_close();
     virtual void on_backend_close();
 private:
     int to_connect_backend();
@@ -34,7 +43,8 @@ private:
         const bool has_x_real_ip,
         const char *xff_start,
         const int xff_len);
-    private:
+private:
+    int state = 0;
     int partial_buf_len = 0;
     int local_addr_len = 0;
     int remote_addr_len = 0;

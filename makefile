@@ -37,6 +37,7 @@
                                          io_handle.cpp \
                                          leader.cpp \
                                          log.cpp \
+                                         task_in_worker.cpp \
                                          timer_qheap.cpp \
                                          worker.cpp \
                                          worker_timing_event.cpp \

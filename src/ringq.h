@@ -1,8 +1,6 @@
 #ifndef NBX_RINGQ_H_
 #define NBX_RINGQ_H_
 
-#include <utility>
-
 template<class item_t>
 class ringq {
 public:

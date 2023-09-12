@@ -3,6 +3,7 @@
 #include "log.h"
 #include "worker.h"
 #include "leader.h"
+#include "worker_timing_event.h"
 
 int g::pid = 0;
 int g::shutdown_child_pid = 0;
@@ -12,10 +13,13 @@ leader *g::g_leader = nullptr;
 
 int g::init(const conf *cf) {
     g::main_worker = new worker();
-    if (g::main_worker->open(nullptr, cf) != 0) {
+    if (g::main_worker->open(nullptr, 0, cf) != 0) {
         log::error("main worker open fail!");
         return -1;
     }
+    worker_stat_output *wso = new worker_stat_output(g::main_worker);
+    g::main_worker->schedule_timer(wso, 800, 1000);
+
     g::g_leader = new leader();
     if (g::g_leader->open(cf) != 0) {
         log::error("leader open fail!");

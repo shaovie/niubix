@@ -14,7 +14,8 @@
 #include <sys/epoll.h>
 #include <sys/time.h>
 
-int worker::open(leader *l, const conf *cf) {
+int worker::open(leader *l, const int no, const conf *cf) {
+    this->worker_no = no;
     this->poller = new evpoll();
     if (this->poller->open(cf->max_fds) != 0)
         return -1;

@@ -13,6 +13,7 @@ class conf;
 class leader;
 class connector;
 class ev_handler; 
+class task_in_worker;
 
 // worker 把poller融合在一起了, 这样层次简单一些
 //
@@ -22,7 +23,7 @@ public:
     friend class worker_cache_time;
     worker() = default;
 
-    int open(leader *l, const conf *cf);
+    int open(leader *l, const int no, const conf *cf);
     int close();
 
     //= timer
@@ -50,6 +51,8 @@ public:
     void set_cpu_affinity();
     void destroy();
 
+    void push_task(const task_in_worker &t) { this->poller->push_task(t); }
+
     void init_poll_sync_opt(const int t, void *arg);
     void do_poll_sync_opt(const int t, void *arg);
     void poll_cache_set(const int id, void *val, void (*free_func)(void *)) {
@@ -65,6 +68,7 @@ public:
         return nullptr;
     }
 public:
+    int worker_no = 0;
     int cpu_id = -1;
     int rio_buf_size = 0;
     int wio_buf_size = 0;

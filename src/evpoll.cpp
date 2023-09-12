@@ -16,6 +16,7 @@ int evpoll::open(const int max_fds) {
         return -1;
     }
     this->poll_descs = new poll_desc_map(max_fds);
+    this->taskq = new ringq<task_in_worker>(1024);
     return 0;
 }
 int evpoll::add(ev_handler *eh, const int fd, const uint32_t ev) {
@@ -94,6 +95,9 @@ void evpoll::run() {
     struct epoll_event ready_events[evpoll_ready_events_size]; // stack variable
 
     while (true) {
+        if (!this->taskq->empty())
+            task_in_worker::do_tasks(this->taskq);
+        
         nfds = ::epoll_wait(efd, ready_events, evpoll_ready_events_size, -1);
         for (i = 0; i < nfds; ++i) {
             ev_itor = ready_events + i;

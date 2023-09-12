@@ -58,6 +58,11 @@ void log_impl::log(const char *format, va_list &va_ptr) {
     ::gettimeofday(&now, nullptr);
     struct tm ttm;
     char time_buf[13] = {0};
+    int msec = (int)((now.tv_usec + 999) / 1000);
+    if (msec > 999) {
+        ++(now.tv_sec);
+        msec -= 1000;
+    }
     ::localtime_r(&(now.tv_sec), &ttm);
     ::strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &ttm);
 
@@ -72,10 +77,10 @@ void log_impl::log(const char *format, va_list &va_ptr) {
     char log_record[MAX_LENGTH_OF_ONE_LOG + 1]; // stack variable
     int ret = ::snprintf(log_record,
         MAX_LENGTH_OF_ONE_LOG,
-        "%s %s.%03d ",
+        "%s %s.%03d %ld ",
         this->cached_date,
         time_buf,
-        (int)((now.tv_usec + 999) / 1000));
+        msec, pthread_self());
     if (ret >= MAX_LENGTH_OF_ONE_LOG)
         ret = MAX_LENGTH_OF_ONE_LOG - 1;
     len += ret;

@@ -53,6 +53,10 @@ public:
 
     app::conf *cf = nullptr;
     std::atomic<int> accepted_num = {0};
+    std::atomic<int> frontend_active_n = {0};
+    std::atomic<int> backend_active_n = {0};
+    std::atomic<int> backend_conn_ok_n = {0};
+    std::atomic<int> backend_conn_fail_n = {0};
 public:
     static int load_conf(nlohmann::json &);
 

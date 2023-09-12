@@ -10,9 +10,14 @@ public:
     frontend_conn() = default;
     virtual ~frontend_conn() { };
 
-    virtual int on_backend_connect_ok() { return -1; };
-    virtual void on_backend_connect_fail(const int /*err*/) { };
-    virtual void on_backend_close() { };
+    virtual void backend_connect_ok() = 0;
+    virtual void on_backend_connect_ok() = 0;
+
+    virtual void backend_connect_fail() = 0;
+    virtual void on_backend_connect_fail() = 0;
+
+    virtual void backend_close() = 0;
+    virtual void on_backend_close() = 0;
 };
 
 #endif // NBX_FRONTEND_CONN_H_

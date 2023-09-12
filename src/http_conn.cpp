@@ -24,24 +24,24 @@ http_conn::~http_conn() {
         ::free(this->remote_addr);
 }
 void http_conn::set_remote_addr(const struct sockaddr *addr, const socklen_t /*socklen*/) {
-    //this->sockaddr = (struct sockaddr *)::malloc(socklen); // TODO optimize
-    //::memcpy(this->sockaddr, addr, socklen);
     if (this->remote_addr == nullptr)
-        this->remote_addr = (char *)::malloc(INET6_ADDRSTRLEN);
+        this->remote_addr = (char *)::malloc(INET6_ADDRSTRLEN); // TODO optimize
     this->remote_addr[INET6_ADDRSTRLEN-1] = '\0';
     if (socket::addr_to_string(addr, this->remote_addr, INET6_ADDRSTRLEN) == 0)
         this->remote_addr_len = ::strlen(this->remote_addr);
 }
 bool http_conn::on_open() {
     this->start_time = this->wrker->now_msec;
+    this->state = conn_ok;
 
     if (this->local_addr == nullptr)
-        this->local_addr = (char *)::malloc(INET6_ADDRSTRLEN);
+        this->local_addr = (char *)::malloc(INET6_ADDRSTRLEN); // TODO optimize
     this->local_addr[INET6_ADDRSTRLEN-1] = '\0';
     if (socket::get_local_addr(this->get_fd(), this->local_addr, INET6_ADDRSTRLEN) != 0) {
         log::error("new conn get local addr fail %s", strerror(errno));
         return false;
     }
+
     this->local_addr_len = ::strlen(this->local_addr);
     auto app_l = app::app_map_by_port.find(this->acc->port);
     if (unlikely(app_l == app::app_map_by_port.end())) {
@@ -58,14 +58,13 @@ bool http_conn::on_open() {
 }
 int http_conn::to_connect_backend() {
     int accepted_num = this->matched_app->accepted_num.fetch_add(1, std::memory_order_relaxed);
-    // route
     if (this->matched_app->cf->policy == app::roundrobin) {
         int idx = accepted_num % this->matched_app->cf->backend_list.size();
         app::backend *ab = this->matched_app->cf->backend_list[idx];
         struct sockaddr_in taddr;
         inet_addr::parse_v4_addr(ab->host, &taddr);
         nbx_inet_addr naddr{(struct sockaddr*)&taddr, sizeof(taddr)};
-        this->backend = new backend_conn(this->wrker, this);
+        this->backend = new backend_conn(this->wrker, this, this->matched_app);
         if (this->wrker->conn->connect(this->backend, naddr,
                 this->matched_app->cf->connect_backend_timeout) == -1) {
             log::warn("connect to backend:%s fail!", ab->host.c_str());
@@ -75,49 +74,78 @@ int http_conn::to_connect_backend() {
     }
     return -1;
 }
-int http_conn::on_backend_connect_ok() {
+// NOTE frontend & backend 不能在各自的执行栈中操作对方的资源,这样会导致资源管理混乱
+// poller中有ready_events 队列, 有可能backend另一个事件已经wait到了
+// 交由taskq统一释放, 这样不受wait list影响
+void http_conn::backend_connect_ok() {
+    if (this->backend == nullptr)
+        return ; // 如果早就解除关系了, 就忽略它的事件
+
+    if (this->state == conn_ok)
+        this->wrker->push_task(task_in_worker(task_in_worker::backend_conn_ok, this));
+}
+void http_conn::on_backend_connect_ok() {
+    if (this->state != conn_ok)
+        return ;
     int fd = this->get_fd();
+    if (fd == -1)
+        return ;
     socket::set_nodelay(fd);
 
     if (this->wrker->add_ev(this, fd, ev_handler::ev_read) != 0) {
         log::error("new http_conn add to poller fail! %s", strerror(errno));
-        this->backend = nullptr;
         this->on_close();
-        return -1;
+        return ;
     }
-    return 0;
+    this->matched_app->frontend_active_n.fetch_add(1, std::memory_order_relaxed);
+    this->state = active_ok;
 }
-void http_conn::on_backend_connect_fail(const int /*err*/) {
-    if (this->backend != nullptr)
-        this->backend = nullptr;
+void http_conn::backend_connect_fail() {
+    if (this->backend == nullptr)
+        return ; // 如果早就解除关系了, 就忽略它的事件
+    
+    this->backend = nullptr;
+    if (this->state == conn_ok || this->state == active_ok)
+        this->wrker->push_task(task_in_worker(task_in_worker::backend_connect_fail, this));
+}
+void http_conn::on_backend_connect_fail() {
     this->on_close();
 }
+void http_conn::backend_close() {
+    if (this->backend == nullptr)
+        return ; // 如果早就解除关系了, 就忽略它的事件
+    
+    this->backend = nullptr;
+    if (this->state == conn_ok || this->state == active_ok)
+        this->wrker->push_task(task_in_worker(task_in_worker::backend_close, this));
+}
 void http_conn::on_backend_close() {
-    if (this->backend != nullptr)
-        this->backend = nullptr;
-
     this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
     this->on_close();
 }
-void http_conn::on_close() {
+void http_conn::on_close() { // maybe trigger EPOLLHUP | EPOLLERR
+    if (this->matched_app != nullptr)
+        this->matched_app->frontend_active_n.fetch_sub(1, std::memory_order_relaxed);
+    
     if (this->backend != nullptr) {
-        this->backend->on_frontend_close();
-        this->backend = nullptr;
+        this->backend->frontend_close();
+        this->backend = nullptr; // 解除关系
     }
-    this->wrker->cancel_timer(this);
     this->destroy();
-    delete this;
+    this->state = closed;
+    this->wrker->push_task(task_in_worker(task_in_worker::del_http_conn, this));
 }
 bool http_conn::on_read() {
+    if (unlikely(this->backend == nullptr))
+        return false;
+
     char *buf = nullptr;
     int ret = this->recv(buf);
+    if (likely(ret > 0)) {
+        return this->handle_request(buf, ret);
     if (ret == 0) // closed
         return false;
-    else if (ret < 0)
-        return true;
-    
-    buf[ret] = '\0';
-    return this->handle_request(buf, ret);
+    return true; // ret < 0
 }
 #define save_partial_buf() if (this->partial_buf_len == 0) { \
                                this->partial_buf = (char*)::malloc(len); \
@@ -203,19 +231,20 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
                 save_partial_buf();
                 return true;
             }
-            if (!has_x_real_ip
-                && p - start + 1 >= (int)sizeof("X-Real-IP:" - 1)
-                && ::strncasecmp(start, "X-Real-IP:", sizeof("X-Real-IP:" - 1)) == 0) {
-                has_x_real_ip = true;
-            } else {
-                if (p - start + 1 >= (int)sizeof("X-Forwarded-For:0.0.0.0" - 1)
+            if (LOWER(*start) == 'x') {
+                if (!has_x_real_ip
+                    && p - start + 1 >= (int)sizeof("X-Real-IP:" - 1)
+                    && ::strncasecmp(start, "X-Real-IP:", sizeof("X-Real-IP:" - 1)) == 0) {
+                    has_x_real_ip = true;
+                } else if (p - start + 1 >= (int)sizeof("X-Forwarded-For:0.0.0.0" - 1)
                     && ::strncasecmp(start, "X-Forwarded-For:", sizeof("X-Forwarded-For:" - 1)) == 0) {
                     xff_start = start;
                     xff_len = p - 1 - start;
-                    break;
                 }
             }
             buf_offset += p - start + 1;
+            if (xff_start != nullptr)
+                break ;
         }
 
         if (len - buf_offset < 2) { // no end of \r\n ?
@@ -223,7 +252,8 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
             return true;
         }
         if (buf[buf_offset] == '\r' && buf[buf_offset+1] == '\n')
-            this->a_complete_request(buf, buf_offset+1+1, header_line_end, has_x_real_ip, xff_start, xff_len);
+            this->a_complete_request(buf, buf_offset+1+1, header_line_end,
+                has_x_real_ip, xff_start, xff_len);
 
         buf_offset += 2;
     } while (true);
