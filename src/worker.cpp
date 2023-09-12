@@ -38,6 +38,9 @@ int worker::open(leader *l, const int no, const conf *cf) {
     this->notifier = new worker_notifier(this);
     if (this->notifier->open() == -1)
         return -1;
+    this->ataskq = new async_taskq(this, 16);
+    if (this->ataskq->open() == -1)
+        return -1;
 
     this->conn = new connector(this);
     this->ld = l;
