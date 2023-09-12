@@ -9,6 +9,13 @@ class frontend_conn;
 
 class backend_conn: public io_handle {
 public:
+    enum {
+        new_ok      = 0,
+        conn_ok     = 1,
+        conn_fail   = 2,
+        active_ok   = 3, // add ev to poll
+        closed      = 4, // add ev to poll
+    };
     backend_conn(worker *w, frontend_conn *f, app *ap):
         matched_app(ap),
         frontend(f)
@@ -23,9 +30,10 @@ public:
 
     virtual void on_close();
 
+    virtual void frontend_close();
     virtual void on_frontend_close();
 private:
-    bool connect_ret = false;
+    int state = 0;
     app *matched_app = nullptr;
     frontend_conn *frontend = nullptr;
 };

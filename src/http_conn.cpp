@@ -85,8 +85,8 @@ void http_conn::backend_connect_ok() {
         this->wrker->push_task(task_in_worker(task_in_worker::backend_conn_ok, this));
 }
 void http_conn::on_backend_connect_ok() {
-    if (this->state != conn_ok)
-        return ;
+    if (this->backend == nullptr)
+        return ; // 如果早就解除关系了, 就忽略它的事件
     int fd = this->get_fd();
     if (fd == -1)
         return ;
@@ -105,10 +105,13 @@ void http_conn::backend_connect_fail() {
         return ; // 如果早就解除关系了, 就忽略它的事件
     
     this->backend = nullptr;
-    if (this->state == conn_ok || this->state == active_ok)
-        this->wrker->push_task(task_in_worker(task_in_worker::backend_connect_fail, this));
+    this->wrker->push_task(task_in_worker(task_in_worker::backend_conn_fail, this));
 }
 void http_conn::on_backend_connect_fail() {
+    if (this->state == closed)
+        return ;
+
+    this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
     this->on_close();
 }
 void http_conn::backend_close() {
@@ -116,10 +119,12 @@ void http_conn::backend_close() {
         return ; // 如果早就解除关系了, 就忽略它的事件
     
     this->backend = nullptr;
-    if (this->state == conn_ok || this->state == active_ok)
-        this->wrker->push_task(task_in_worker(task_in_worker::backend_close, this));
+    this->wrker->push_task(task_in_worker(task_in_worker::backend_close, this));
 }
 void http_conn::on_backend_close() {
+    if (this->state == closed)
+        return ;
+
     this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
     this->on_close();
 }
@@ -131,9 +136,9 @@ void http_conn::on_close() { // maybe trigger EPOLLHUP | EPOLLERR
         this->backend->frontend_close();
         this->backend = nullptr; // 解除关系
     }
+    this->wrker->push_task(task_in_worker(task_in_worker::del_ev_handler, this));
     this->destroy();
     this->state = closed;
-    this->wrker->push_task(task_in_worker(task_in_worker::del_http_conn, this));
 }
 bool http_conn::on_read() {
     if (unlikely(this->backend == nullptr))
@@ -141,7 +146,7 @@ bool http_conn::on_read() {
 
     char *buf = nullptr;
     int ret = this->recv(buf);
-    if (likely(ret > 0)) {
+    if (likely(ret > 0))
         return this->handle_request(buf, ret);
     if (ret == 0) // closed
         return false;

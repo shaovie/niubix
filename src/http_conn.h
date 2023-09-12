@@ -11,10 +11,10 @@ class backend_conn;
 class http_conn: public frontend_conn {
 public:
     enum {
-        new_ok      = 0;
-        conn_ok     = 1;
-        active_ok   = 2; // add ev to poll
-        closed      = 3; // add ev to poll
+        new_ok      = 0,
+        conn_ok     = 1,
+        active_ok   = 2, // add ev to poll
+        closed      = 3, // add ev to poll
     };
     http_conn() = default;
     virtual ~http_conn();

@@ -1,6 +1,7 @@
 #include "backend_conn.h"
 #include "frontend_conn.h"
 #include "worker.h"
+#include "defines.h"
 #include "log.h"
 #include "app.h"
 
@@ -15,7 +16,7 @@ backend_conn::~backend_conn() {
 }
 bool backend_conn::on_open() {
     this->matched_app->backend_conn_ok_n.fetch_add(1, std::memory_order_relaxed);
-    this->connect_ret = true;
+    this->state = conn_ok;
 
     if (this->frontend == nullptr) // 前端已经关闭, 自行释放资源
         return false;
@@ -27,11 +28,12 @@ bool backend_conn::on_open() {
         log::error("new backend conn add to poller fail! %s", strerror(errno));
         return false;
     }
+    this->state = active_ok;
     return true;
 }
 void backend_conn::on_connect_fail(const int /*err*/) {
     this->matched_app->backend_conn_fail_n.fetch_add(1, std::memory_order_relaxed);
-    this->connect_ret = true;
+    this->state = conn_fail;
 
     if (this->frontend != nullptr) {
         this->frontend->backend_connect_fail();
@@ -41,27 +43,28 @@ void backend_conn::on_connect_fail(const int /*err*/) {
     this->on_close();
 }
 void backend_conn::frontend_close() {
-    if (this->frontend != nullptr)
-        this->frontend = nullptr; // 好了, 现在跟前端没关系了, 前端已经关闭了
+    if (this->frontend == nullptr)
+        return ; // 如果早就解除关系了, 就忽略它的事件
+
+    this->frontend = nullptr; // 好了, 现在跟前端没关系了, 前端已经关闭了
     this->wrker->push_task(task_in_worker(task_in_worker::frontend_close, this));
 }
 void backend_conn::on_frontend_close() {
-    // 如果connector还没返回, 不做任何处理, 等待返回中处理结果
-    if (this->connect_ret == false)
-        return ;
+    if (this->state == new_ok || this->state == closed)
+        return ; // 如果connector还没返回, 不做任何处理, 等待返回中处理结果
     
     this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
     this->on_close();
 }
 void backend_conn::on_close() {
-    int c = this->matched_app->backend_active_n.fetch_sub(1, std::memory_order_relaxed);
-    log::info("backend destroy %d backend_active_n=%d", this->get_fd(), c);
+    this->matched_app->backend_active_n.fetch_sub(1, std::memory_order_relaxed);
     if (this->frontend != nullptr) {
         this->frontend->backend_close();
         this->frontend = nullptr; // 解除关系
     }
+    this->wrker->push_task(task_in_worker(task_in_worker::del_ev_handler, this));
     this->destroy();
-    this->wrker->push_task(task_in_worker(task_in_worker::del_backend_conn, this));
+    this->state = closed;
 }
 bool backend_conn::on_read() {
     if (this->frontend == nullptr)
@@ -69,11 +72,11 @@ bool backend_conn::on_read() {
 
     char *buf = nullptr;
     int ret = this->recv(buf);
+    if (likely(ret > 0)) {
+        this->frontend->send(buf, ret);
+        return true;
+    }
     if (ret == 0) // closed
         return false;
-    else if (ret < 0)
-        return true;
-
-    this->frontend->send(buf, ret);
-    return true;
+    return true; // ret < 0
 }

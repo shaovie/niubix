@@ -2,6 +2,7 @@
 #include "ev_handler.h"
 #include "frontend_conn.h"
 #include "backend_conn.h"
+#include "log.h"
 
 void task_in_worker::do_tasks(ringq<task_in_worker> *taskq) {
     int len = taskq->length();
@@ -12,14 +13,24 @@ void task_in_worker::do_tasks(ringq<task_in_worker> *taskq) {
     }
 }
 void task_in_worker::do_task(const task_in_worker &t) {
-    if (t.type == task_in_worker::del_ev_handler)
-        delete (ev_handler *)t.p;
-    else if (t.type == task_in_worker::backend_conn_ok)
-        ((frontend_conn *)t.p)->on_backend_connect_ok();
-    else if (t.type == task_in_worker::backend_conn_fail)
-        ((frontend_conn *)t.p)->on_backend_connect_fail();
-    else if (t.type == task_in_worker::backend_close)
-        ((frontend_conn *)t.p)->on_backend_close();
-    else if (t.type == task_in_worker::frontend_close)
-        ((backend_conn *)t.p)->on_frontend_close();
+    switch (t.type) {
+        case task_in_worker::del_ev_handler:
+            delete (ev_handler *)t.p;
+            break;
+        case task_in_worker::backend_conn_ok:
+            ((frontend_conn *)t.p)->on_backend_connect_ok();
+            break;
+        case task_in_worker::backend_conn_fail:
+            ((frontend_conn *)t.p)->on_backend_connect_fail();
+            break;
+        case task_in_worker::backend_close:
+            ((frontend_conn *)t.p)->on_backend_close();
+            break;
+        case task_in_worker::frontend_close:
+            ((backend_conn *)t.p)->on_frontend_close();
+            break;
+        default:
+            log::error("unknown worker task");
+            break;
+    }
 }
