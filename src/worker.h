@@ -18,15 +18,15 @@ class connector;
 class ev_handler; 
 class task_in_worker;
 
-class worker_notifier : public ev_handler { 
+class worker_wakeup : public ev_handler { 
 public:
-    worker_notifier(worker *w);
+    worker_wakeup(worker *w);
 
     int open();
-    void notify();
     virtual bool on_read();
+    void wake();
 
-    bool notified = false;
+    bool waked = false;
     int efd = -1;
 };
 
@@ -70,7 +70,7 @@ public:
 
     void push_task(const task_in_worker &t) {
         this->poller->push_task(t);
-        // TODO this->notifier->notify();
+        // TODO this->wakeup->wake();
     }
     void push_async_task(const task_in_worker &t) { this->ataskq->push(t); }
 
@@ -101,7 +101,7 @@ public:
     leader *ld = nullptr;
     connector *conn = nullptr;
     async_taskq *ataskq = nullptr;
-    worker_notifier *notifier = nullptr;
+    worker_wakeup *wakeup = nullptr;
     std::vector<acceptor *> acceptor_list;
     pthread_t thread_id;
     std::unordered_map<int, void *> pcache;

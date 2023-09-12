@@ -35,8 +35,8 @@ int worker::open(leader *l, const int no, const conf *cf) {
         log::error("add timer to worker fail! %s", strerror(errno));
         return -1;
     }
-    this->notifier = new worker_notifier(this);
-    if (this->notifier->open() == -1)
+    this->wakeup = new worker_wakeup(this);
+    if (this->wakeup->open() == -1)
         return -1;
     this->ataskq = new async_taskq(this, 16);
     if (this->ataskq->open() == -1)
@@ -73,10 +73,10 @@ void worker::run() {
     if (this->ld != nullptr)
         this->ld->worker_offline();
 }
-worker_notifier::worker_notifier(worker *w) {
+worker_wakeup::worker_wakeup(worker *w) {
     this->set_worker(w);
 }
-int worker_notifier::open() {
+int worker_wakeup::open() {
     int fd = ::eventfd(0, EFD_NONBLOCK|EFD_CLOEXEC);
     if (fd == -1) {
         log::error("create eventfd fail! %s", strerror(errno));
@@ -90,8 +90,8 @@ int worker_notifier::open() {
     this->efd = fd;
     return 0;
 }
-void worker_notifier::notify() {
-    if (this->notified == true)
+void worker_wakeup::wake() {
+    if (this->waked == true)
         return ;
 
     int64_t v = 1;
@@ -100,16 +100,16 @@ void worker_notifier::notify() {
         ret = ::write(this->efd, (void *)&v, sizeof(v));
     } while (ret == -1 && errno == EINTR);
 
-    this->notified = true;
+    this->waked = true;
 }
-bool worker_notifier::on_read() {
+bool worker_wakeup::on_read() {
     int64_t v = 0;
     int ret = 0;
     do {
         ret = ::read(this->efd, (void *)&v, sizeof(v));
     } while (ret == -1 && errno == EINTR);
 
-    this->notified = true;
+    this->waked = true;
     return true;
 }
 

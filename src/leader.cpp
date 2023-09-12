@@ -4,10 +4,10 @@
 #include "ev_handler.h"
 #include "worker_timing_event.h"
 
-#include <errno.h>
-#include <string.h>
+#include <cerrno>
 #include <cstdio>
 #include <thread>
+#include <cstring>
 
 int leader::open(const conf *cf) {
     this->worker_num = cf->worker_num;
@@ -28,7 +28,8 @@ int leader::open(const conf *cf) {
 }
 void leader::gracefully_close_all() {
     for (int i = 0; i < this->worker_num; ++i)
-        this->workers[i].push_async_task(task_in_worker(task_in_worker::gracefully_shutdown, nullptr));
+        this->workers[i].push_async_task(
+            task_in_worker(task_in_worker::gracefully_shutdown, nullptr));
 }
 int leader::add_ev(ev_handler *eh, const int fd, const uint32_t events) {
     if (fd < 0 || eh == nullptr || events == 0)
