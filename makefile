@@ -28,6 +28,7 @@
                               CPPFILES = \
                                          acceptor.cpp \
                                          app.cpp \
+                                         async_taskq.cpp \
                                          backend_conn.cpp \
                                          conf.cpp \
                                          connector.cpp \
