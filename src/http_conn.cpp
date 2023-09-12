@@ -159,8 +159,8 @@ bool http_conn::on_read() {
                            }
 
 bool http_conn::handle_request(const char *rbuf, int rlen) {
-    if (!this->matched_app-cf->with_x_real_ip
-        && !this->matched_app-cf->with_x_forwarded_for) {
+    if (!this->matched_app->cf->with_x_real_ip
+        && !this->matched_app->cf->with_x_forwarded_for) {
         this->backend->send(rbuf, rlen);
         return true;
     }
@@ -242,12 +242,12 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
                 return true;
             }
             if (LOWER(*start) == 'x') {
-                if (this->matched_app-cf->with_x_real_ip
+                if (this->matched_app->cf->with_x_real_ip
                     && !has_x_real_ip
                     && p - start + 1 >= (int)sizeof("X-Real-IP:" - 1)
                     && ::strncasecmp(start, "X-Real-IP:", sizeof("X-Real-IP:" - 1)) == 0) {
                     has_x_real_ip = true;
-                } else if (this->matched_app->with_x_forwarded_for
+                } else if (this->matched_app->cf-with_x_forwarded_for
                     && p - start + 1 >= (int)sizeof("X-Forwarded-For:0.0.0.0" - 1)
                     && ::strncasecmp(start, "X-Forwarded-For:", sizeof("X-Forwarded-For:" - 1)) == 0) {
                     xff_start = start;
@@ -283,7 +283,7 @@ int http_conn::a_complete_request(const char *buf, const int len,
 
     ::memcpy(hbuf, buf, header_line_end);
     copy_len += header_line_end;
-    if (has_x_real_ip == false && this->matched_app-cf->with_x_real_ip) {
+    if (has_x_real_ip == false && this->matched_app->cf->with_x_real_ip) {
         ::memcpy(hbuf + copy_len, "X-Real-IP: ", sizeof("X-Real-IP: ") - 1);
         copy_len += sizeof("X-Real-IP: ") - 1;
         ::memcpy(hbuf + copy_len, this->remote_addr, this->remote_addr_len);
@@ -292,7 +292,7 @@ int http_conn::a_complete_request(const char *buf, const int len,
         copy_len += 2;
     }
 
-    if (this->matched_app-cf->with_x_forwarded_for) {
+    if (this->matched_app->cf->with_x_forwarded_for) {
         if (xff_start == nullptr) { // add
             ::memcpy(hbuf + copy_len, "X-Forwarded-For: ", sizeof("X-Forwarded-For: ") - 1);
             copy_len += sizeof("X-Forwarded-For: ") - 1;
@@ -311,7 +311,7 @@ int http_conn::a_complete_request(const char *buf, const int len,
     }
 
     bool copy_all = false;
-    if (len - header_line_end <= (sizeof(hbuf) - copy_len)) {
+    if (len - header_line_end <= ((int)sizeof(hbuf) - copy_len)) {
         ::memcpy(hbuf + copy_len, buf + header_line_end, len - header_line_end);
         copy_len += len - header_line_end;
         copy_all = true;
