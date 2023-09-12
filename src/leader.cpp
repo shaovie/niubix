@@ -22,7 +22,7 @@ int leader::open(const conf *cf) {
             return -1;
 
         worker_cache_time *wct = new worker_cache_time(&this->workers[i]);
-        this->workers[i].schedule_timer(wct, i, 80);
+        this->workers[i].schedule_timer(wct, i, 48);
     }
     return 0;
 }
@@ -64,9 +64,9 @@ void leader::run(const bool join) {
         return ;
     }
     std::thread **threads = new std::thread*[this->worker_num]();
-    for (int i = 0; i < this->worker_num; ++i) {
+    for (int i = 0; i < this->worker_num; ++i)
         threads[i] = new std::thread(&worker::run, &(this->workers[i]));
-    }
+    
     for (int i = 0; i < this->worker_num; ++i) {
         threads[i]->join();
         delete threads[i];

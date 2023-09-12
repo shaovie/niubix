@@ -187,21 +187,20 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
             return true; // partial
         }
         // 1. METHOD  GET/POST
-        int method = 0; // get:1
         const char *xff_start = nullptr;
         int xff_len = 0;
         if (buf[0] == 'G' && buf[1] == 'E' && buf[2] == 'T') {
             if (buf[3] != ' ')
                 return false; // invalid
-            method = 1;
+            this->method = 1;
             buf_offset += 4;
         } else if (buf[0] == 'P' && buf[1] == 'O' && buf[3] == 'T') {
             if (buf[4] != ' ')
                 return false; // invalid
-            method = 2;
+            this->method = 2;
             buf_offset += 5;
         }
-        if (method == 0)
+        if (this->method == 0)
             return false; // unsurpported
 
         // 2. URI /a/b/c?p=x&p2=2#yyy 
@@ -247,7 +246,7 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
                     && p - start + 1 >= (int)sizeof("X-Real-IP:" - 1)
                     && ::strncasecmp(start, "X-Real-IP:", sizeof("X-Real-IP:" - 1)) == 0) {
                     has_x_real_ip = true;
-                } else if (this->matched_app->cf-with_x_forwarded_for
+                } else if (this->matched_app->cf->with_x_forwarded_for
                     && p - start + 1 >= (int)sizeof("X-Forwarded-For:0.0.0.0" - 1)
                     && ::strncasecmp(start, "X-Forwarded-For:", sizeof("X-Forwarded-For:" - 1)) == 0) {
                     xff_start = start;

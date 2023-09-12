@@ -44,10 +44,11 @@ private:
         const char *xff_start,
         const int xff_len);
 private:
-    int state = 0;
+    char state = 0;
+    char method = 0;
+    char local_addr_len = 0;
+    char remote_addr_len = 0;
     int partial_buf_len = 0;
-    int local_addr_len = 0;
-    int remote_addr_len = 0;
     socklen_t socklen = 0;
     int64_t start_time = 0;
     struct sockaddr *sockaddr = nullptr;

@@ -33,7 +33,7 @@ public:
     virtual void frontend_close();
     virtual void on_frontend_close();
 private:
-    int state = 0;
+    char state = 0;
     app *matched_app = nullptr;
     frontend_conn *frontend = nullptr;
 };
