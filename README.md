@@ -37,29 +37,16 @@ wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8082/xxx
 Running 10s test @ http://10.146.0.2:8082/xxx
   2 threads and 100 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    55.71ms   52.58ms 226.45ms   70.15%
-    Req/Sec     1.06k     2.29k   10.04k    92.00%
-  21059 requests in 10.01s, 3.41MB read
-Requests/sec:   2103.96
-Transfer/sec:    349.22KB
-```
+    Latency     5.75ms    3.52ms  21.06ms   52.07%
+    Req/Sec     8.70k     0.99k   10.97k    73.00%
+  173089 requests in 10.00s, 28.05MB read
+Requests/sec:  17302.20
+Transfer/sec:      2.80MB
+
 nginx测试局域网环境,数据很差,目前还没找到原因,cpu也能跑满,但是就是qps上不去  
 ```
-如果换到本机 proxy_pass http://127.0.0.1:8080; nginx qps 能有所提升, 但还是不理想
 
-wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8082/xxx
-Running 10s test @ http://10.146.0.2:8082/xxx
-  2 threads and 100 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    10.57ms    6.26ms 108.02ms   67.57%
-    Req/Sec     4.81k   335.06     5.68k    74.00%
-  95756 requests in 10.00s, 15.52MB read
-Requests/sec:   9573.99
-Transfer/sec:      1.55MB
-```
-
-
-**niubix 测试反向代理能力, 响应速度和并发处理能力表现都不错, 吞吐能力超过nginx的2倍**
+**niubix 测试反向代理能力, 响应速度和并发处理能力表现都不错, 吞吐能力超过nginx的4.3倍**
 ```
 run at 10.146.0.3
 
