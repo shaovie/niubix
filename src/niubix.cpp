@@ -16,6 +16,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/file.h>
 #include <sys/resource.h>
 
 static int g_argc = 0;
@@ -60,15 +61,21 @@ static int output_pid(const char *file_name) {
       master_log("%s write pid file failed! [%s]!\n", fmttime(), strerror(errno));
       return -1;
   }
+  if (::flock(fd, LOCK_EX|LOCK_NB) != 0) {
+      master_log("%s another niubix running!\n", fmttime()); 
+      ::close(fd);
+      ::exit(1);
+  }
   if (::ftruncate(fd, 0) == -1) {
       master_log("%s write pid file ftruncate failed! [%s]!\n", fmttime(), strerror(errno));
+      ::close(fd);
       return -1;
   }
   if (::write(fd, bf, len) == -1) {
       master_log("%s write pid file write failed! [%s]!\n", fmttime(), strerror(errno));
+      ::close(fd);
       return -1;
   }
-  ::close(fd);
   return 0;
 }
 static void daemon() {
