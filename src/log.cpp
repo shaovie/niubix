@@ -135,7 +135,7 @@ int log_impl::new_file(const int year, const int month, const int mday) {
         char fname[MAX_FILE_NAME_LENGTH + 1] = {0};
         ::snprintf(fname, sizeof(fname), "%s/%s-%d-%02d-%02d.log",
             this->dir.c_str(), this->filename.c_str(),
-            year, month, mday);
+            year, month + 1, mday);
         do {
             int fd = ::open(fname, O_CREAT | O_WRONLY | O_APPEND, 0644);
             if (fd == -1) {
