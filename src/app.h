@@ -33,6 +33,8 @@ public:
     class backend;
     class conf {
     public:
+        bool with_x_forwarded_for = true;
+        bool with_x_real_ip = true;
         int policy = 0;
         int connect_backend_timeout = 1000; // msec
         int health_check_timeout    = 1000; // msec

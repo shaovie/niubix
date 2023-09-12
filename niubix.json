@@ -37,6 +37,9 @@
 		"?health_check_uri": "just for http-protocol",
 		"?health_check_uri": "empty represents do not check health",
 
+		"x-forwarded-for": false,
+		"x-real-ip": true,
+
 		"backends": [{
 			"weight": 50,
 			"?weight": "integer > 0. radio = weight/sum(backend0+backend1+...+backendN)*100",

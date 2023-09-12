@@ -76,6 +76,9 @@ int app::load_conf(nlohmann::json &apps) {
             }
         }
 
+        cf->with_x_forwarded_for = itor.value("x-forwarded-for", true);
+        cf->with_x_real_ip = itor.value("x-real-ip", true);
+
         nlohmann::json &backends = itor["backends"];
         if (backends.empty() || !backends.is_array()) {
             fprintf(stderr, "niubix: conf - apps[%d].backend is empty!\n", i);
