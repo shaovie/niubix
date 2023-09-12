@@ -13,6 +13,12 @@ bool worker_stat_output::on_timeout(const int64_t ) {
     return true;
 }
 bool worker_shutdown::on_timeout(const int64_t ) {
-    // TODO
-    ::exit(0);
+    int tt_active_num = 0;
+    for (auto &kv : app::app_map_by_host) {
+        auto ap = kv.second;
+        tt_active_num += ap->frontend_active_n.load();
+    }
+    if (tt_active_num < 1)
+        ::exit(0);
+    return true;
 }
