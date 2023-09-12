@@ -297,7 +297,15 @@ int http_conn::a_complete_request(const char *buf, const int len,
     ::memcpy(hbuf + copy_len, "\r\n", 2);
     copy_len += 2;
 
+    bool copy_all = false;
+    if (len - header_line_end <= (sizeof(hbuf) - copy_len)) {
+        ::memcpy(hbuf + copy_len, buf + header_line_end, len - header_line_end);
+        copy_len += len - header_line_end;
+        copy_all = true;
+    }
+
     this->backend->send(hbuf, copy_len);
-    this->backend->send(buf + header_line_end, len - header_line_end);
+    if (copy_all == false)
+        this->backend->send(buf + header_line_end, len - header_line_end);
     return true;
 }
