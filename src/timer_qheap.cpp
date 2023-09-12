@@ -10,7 +10,7 @@
 #include <sys/timerfd.h>
 
 #define get_parent_index(idx) (((idx) - 1) / 4)
-#define get_child_index(parent_index, child_num) ((4 * (parent_index)) + (child_num) + 1)
+#define get_child_index(parent_idx, child_num) ((4 * (parent_idx)) + (child_num) + 1)
 
 timer_qheap::timer_qheap(const int reserve) {
     this->qheap.reserve(reserve);
