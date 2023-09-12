@@ -21,6 +21,7 @@ public:
     // addr ipv6: "[::]:8080"
     int open(const std::string &addr, const conf *cf);
     void close(); // must called in worker thread
+    void on_close(); // must called in worker thread
     const std::string &get_listen_addr() { return this->listen_addr; }
 
     virtual bool on_read();

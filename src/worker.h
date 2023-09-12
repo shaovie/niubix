@@ -2,8 +2,10 @@
 #define NBX_WORKER_H_
 
 #include "evpoll.h"
+#include "async_taskq.h"
 #include "timer_qheap.h"
 
+#include <vector>
 #include <pthread.h>
 #include <cstdint>
 #include <unordered_map>
@@ -11,9 +13,22 @@
 // Forward declarations
 class conf;
 class leader;
+class acceptor;
 class connector;
 class ev_handler; 
 class task_in_worker;
+
+class worker_notifier : public ev_handler { 
+public:
+    worker_notifier(worker *w);
+
+    int open();
+    void notify();
+    virtual bool on_read();
+
+    bool notified = false;
+    int efd = -1;
+};
 
 // worker 把poller融合在一起了, 这样层次简单一些
 //
@@ -21,10 +36,12 @@ class worker {
 public:
     friend class io_handle;
     friend class worker_cache_time;
-    worker() = default;
+    worker() { this->acceptor_list.reserve(16); }
 
     int open(leader *l, const int no, const conf *cf);
-    int close();
+    void gracefully_close();
+
+    void add_acceptor(acceptor *acc) { this->acceptor_list.push_back(acc); }
 
     //= timer
     inline int schedule_timer(ev_handler *eh, const int delay, const int interval) {
@@ -51,7 +68,11 @@ public:
     void set_cpu_affinity();
     void destroy();
 
-    void push_task(const task_in_worker &t) { this->poller->push_task(t); }
+    void push_task(const task_in_worker &t) {
+        this->poller->push_task(t);
+        this->notifier->notify();
+    }
+    void push_async_task(const task_in_worker &t) { this->ataskq->push(t); }
 
     void init_poll_sync_opt(const int t, void *arg);
     void do_poll_sync_opt(const int t, void *arg);
@@ -79,6 +100,9 @@ public:
     timer_qheap *timer = nullptr;
     leader *ld = nullptr;
     connector *conn = nullptr;
+    async_taskq *ataskq = nullptr;
+    worker_notifier *notifier = nullptr;
+    std::vector<acceptor *> acceptor_list;
     pthread_t thread_id;
     std::unordered_map<int, void *> pcache;
 };

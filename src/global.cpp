@@ -28,3 +28,10 @@ int g::init(const conf *cf) {
     // 以上只是线程启动完成, 并没有附加事件处理
     return 0;
 }
+void g::let_worker_shutdown() {
+    g::g_leader->gracefully_close_all();
+
+    // timing check
+    worker_shutdown *ws = new worker_shutdown(g::main_worker);
+    g::main_worker->schedule_timer(ws, 100, 100);
+}

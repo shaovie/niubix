@@ -16,7 +16,8 @@ public:
     //= run
     int  open(const conf *cf);
     void run(const bool join = true);
-    void close_all();
+
+    void gracefully_close_all();
     void worker_online()  { this->active_worker_num.fetch_add(1, std::memory_order_relaxed); }
     void worker_offline() { this->active_worker_num.fetch_sub(1, std::memory_order_relaxed); }
     int  get_worker_num() const { return this->worker_num; }

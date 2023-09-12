@@ -12,3 +12,6 @@ bool worker_stat_output::on_timeout(const int64_t ) {
     }
     return true;
 }
+bool worker_shutdown::on_timeout(const int64_t ) {
+    // TODO
+}

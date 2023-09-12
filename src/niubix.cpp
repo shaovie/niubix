@@ -193,12 +193,14 @@ static void new_worker_start_ok(int) {
     master_log("%s master recv new worker start ok signal, then shutdown oldpid:%d\n",
         fmttime(), g::shutdown_child_pid);
     ::kill(g::shutdown_child_pid, SIGUSR1);
-    // acceptor.close();
 }
-static void worker_shutdown(int) {
+static bool worker_shutdowning = false;
+static void let_worker_shutdown(int) {
     log::info("worker:%d recv shutdown signal", g::pid);
-    // leader::close_all();
-    ::exit(0);
+    if (worker_shutdowning == true)
+        return ;
+    worker_shutdowning = true;
+    g::let_worker_shutdown();
 }
 static void print_usage() {
     printf("usage: niubix [options] [-]\n");
@@ -263,7 +265,7 @@ int main(int argc, char *argv[]) {
 
     // child process
     g::pid = ::getpid();
-    ::signal(SIGUSR1, worker_shutdown);
+    ::signal(SIGUSR1, let_worker_shutdown);
     if (log::open(cf->log_dir, "niubix", cf->log_level) != 0)
         ::exit(1);
     

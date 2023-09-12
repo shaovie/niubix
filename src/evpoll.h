@@ -4,6 +4,7 @@
 #include "ringq.h"
 #include "task_in_worker.h"
 
+#include <mutex>
 #include <atomic>
 #include <cstdint>
 
@@ -25,7 +26,7 @@ public:
 
     void run();
 
-    void push_task(const task_in_worker &t) { this->taskq->push_back(t); }
+    inline void push_task(const task_in_worker &t) { this->taskq->push_back(t); }
 private:
     int efd = -1;
     std::atomic<int> active_num = {0};

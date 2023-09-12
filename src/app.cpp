@@ -129,6 +129,7 @@ int app::run_all(const ::conf *cf) {
                 log::error("invalid protocol %d", kv.second);
                 return -1;
             }
+            wrker->add_acceptor(acc);
             if (acc->open(kv.first, cf) == -1) {
                 log::error("listen %s fail!", kv.first.c_str());
                 return -1;

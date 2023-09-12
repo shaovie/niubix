@@ -16,4 +16,10 @@ public:
     virtual bool on_timeout(const int64_t now);
 };
 
+class worker_shutdown : public ev_handler {
+public:
+    worker_shutdown(worker *w) { this->set_worker(w); }
+    virtual bool on_timeout(const int64_t now);
+};
+
 #endif // NBX_WORKER_TIMING_EVENT_H_

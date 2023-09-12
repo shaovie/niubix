@@ -9,6 +9,7 @@ class conf;
 class g {
 public:
     static int init(const conf *cf);
+    static void let_worker_shutdown();
 
     static int pid;
     static int shutdown_child_pid;

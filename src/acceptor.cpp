@@ -64,9 +64,12 @@ bool acceptor::on_timeout(const int64_t) {
     return false;
 }
 void acceptor::close() {
+    this->wrker->push_task(task_in_worker(task_in_worker::close_acceptor, this));
+}
+void acceptor::on_close() {
     this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
     this->wrker->cancel_timer(this);
-    this->destroy();
+    this->destroy(); // not delete
 }
 // addr ipv4: "192.168.0.1:8080" or ":8080"
 // addr ipv6: "[2001:470:1f18:471::2]:8080" or "[]:8080"
