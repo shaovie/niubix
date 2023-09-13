@@ -94,14 +94,13 @@ int app::load_conf(nlohmann::json &apps) {
         for (auto bv : backends) {
             j = cf->backend_list.size();
             std::unique_ptr<app::backend> bp(new app::backend());
-            if (cf->policy == app::weighted) {
-                bp->weight = bv.value("weight", -1);
+            if (cf->policy == app::roundrobin) {
+                bp->weight = bv.value("weight", 1);
                 if (bp->weight < 0) {
                     fprintf(stderr, "niubix: conf - apps[%d].backend[%d].weight is invalid!\n", i, j);
                     return -1;
                 }
-            } else if (cf->policy == app::roundrobin)
-                bp->weight = 1;
+            }
             bp->host = bv.value("host", "");
             bp->down = bv.value("down", false);
             struct sockaddr_in taddr;
@@ -115,7 +114,7 @@ int app::load_conf(nlohmann::json &apps) {
         int total_w = 0;
         for (auto bp : cf->backend_list)
             total_w += bp->weight;
-        if (cf->policy == app::weighted && total_w == 0) {
+        if (cf->policy == app::roundrobin && total_w == 0) {
             fprintf(stderr, "niubix: conf - apps[%d] no valid(weight) backend!\n", i);
             return -1;
         }

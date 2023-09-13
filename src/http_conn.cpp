@@ -60,10 +60,8 @@ bool http_conn::on_open() {
 int http_conn::to_connect_backend() {
     this->matched_app->accepted_num.fetch_add(1, std::memory_order_relaxed);
     app::backend *ab = nullptr;
-    if (this->matched_app->cf->policy == app::roundrobin
-        || this->matched_app->cf->policy == app::weighted) {
+    if (this->matched_app->cf->policy == app::roundrobin)
         ab = this->matched_app->get_backend_by_smooth_wrr(); // no need to check for nullptr
-    }
     if (ab == nullptr)
         return -1;
     struct sockaddr_in taddr;

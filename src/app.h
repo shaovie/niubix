@@ -16,16 +16,14 @@ class app {
 public:
     enum { // balance_policy 
         roundrobin  = 1,
-        weighted    = 2,
-        random      = 3,
-        iphash      = 4,
+        random      = 2,
+        iphash      = 3,
     };
     enum {
      http_protocol = 1,
     };
     static int parse_policy(const std::string &s) {
         if (s == "roundrobin") return roundrobin;
-        if (s == "weighted")   return weighted;
         if (s == "random")     return random;
         if (s == "iphash")     return iphash;
         return -1;
