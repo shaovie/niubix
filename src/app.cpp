@@ -79,6 +79,12 @@ int app::load_conf(nlohmann::json &apps) {
         cf->with_x_forwarded_for = itor.value("x-forwarded-for", true);
         cf->with_x_real_ip = itor.value("x-real-ip", true);
 
+        std::string backend_protocol = itor.value("backend_protocol", "");
+        if (backend_protocol.length() == 0 || backend_protocol != "http") {
+            fprintf(stderr, "niubix: conf - apps[%d].backend_protocol is invalid!\n", i);
+            return -1;
+        }
+
         nlohmann::json &backends = itor["backends"];
         if (backends.empty() || !backends.is_array()) {
             fprintf(stderr, "niubix: conf - apps[%d].backend is empty!\n", i);
@@ -104,10 +110,14 @@ int app::load_conf(nlohmann::json &apps) {
             cf->backend_list.push_back(bp.release());
         } // end of `for (auto bv : backends)'
 
-        if (cf->backend_list.empty()) {
-            fprintf(stderr, "niubix: conf - apps[%d] backend is empty!\n", i);
+        int total_w = 0;
+        for (auto bp : cf->backend_list)
+            total_w += bp->weight;
+        if (total_w == 0) {
+            fprintf(stderr, "niubix: conf - apps[%d] no valid(weight) backend!\n", i);
             return -1;
         }
+        
         app *ap = new app();
         ap->cf = cf.release();
         app::app_map_by_host[ap->cf->host] = ap;
@@ -119,6 +129,19 @@ int app::load_conf(nlohmann::json &apps) {
         app::app_map_by_port[port] = vp;
     } // end of `for (auto itor : apps)'
     return 0;
+}
+// refer: https://tenfy.cn/2018/11/12/smooth-weighted-round-robin/
+app::backend* app::smooth_wrr() {
+    int total_w = 0;
+    app::backend *best = nullptr;
+    for (auto bp : this->cf->backend_list) {
+        total_w += bp->weight;
+        bp->current += bp->weight;
+        if (best == nullptr || bp->current > best->current)
+            best = bp;
+    }
+    best->current -= total_w;
+    return best;
 }
 int app::run_all(const ::conf *cf) {
     worker *workers = g::g_leader->get_workers();

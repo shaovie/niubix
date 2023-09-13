@@ -6,8 +6,8 @@
 #include "timer_qheap.h"
 
 #include <vector>
-#include <pthread.h>
 #include <cstdint>
+#include <pthread.h>
 #include <unordered_map>
 
 // Forward declarations
@@ -70,7 +70,7 @@ public:
 
     void push_task(const task_in_worker &t) {
         this->poller->push_task(t);
-        // TODO this->wakeup->wake();
+        this->wakeup->wake();
     }
     void push_async_task(const task_in_worker &t) { this->ataskq->push(t); }
 

@@ -18,6 +18,7 @@
 		"?listen": "[]:8080 represents ipv6 + ipv4 bind port 8080",
 
 		"protocol": "http",
+		"?protocol": "frontend transfer protocol",
 
 		"prolicy": "roundrobin",
 		"?prolicy": "roundrobin/weighted/random/iphash",
@@ -37,12 +38,16 @@
 		"?health_check_uri": "just for http-protocol",
 		"?health_check_uri": "empty represents do not check health",
 
-		"x-forwarded-for": false,
+		"x-forwarded-for": true,
 		"x-real-ip": true,
+
+		"backend_protocol": "http",
+		"?backend_protocol": "Worker to backend stranser protocol",
 
 		"backends": [{
 			"weight": 50,
-			"?weight": "integer > 0. radio = weight/sum(backend0+backend1+...+backendN)*100",
+			"?weight": "integer >= 0. radio = weight/sum(backend0+backend1+...+backendN)*100",
+			"?weight": "weight=0 skip this backend",
 
 			"host": "127.0.0.1:8080",
 			"?host": "ip+port"

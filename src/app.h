@@ -38,7 +38,8 @@ public:
         int policy = 0;
         int connect_backend_timeout = 1000; // msec
         int health_check_timeout    = 1000; // msec
-        int protocol;
+        int protocol = 0;
+        int backend_protocol = 0;
         std::string listen;
         std::string host;
         std::string health_check_uri;
@@ -50,8 +51,13 @@ public:
         backend() = default;
 
         int weight = 0;
+        int current = 0;
         std::string host;
     };
+
+    // smooth weighted round-robin balancing
+    // https://github.com/phusion/nginx/commit/27e94984486058d73157038f7950a0a36ecc6e35
+    backend *smooth_wrr();
 
     app::conf *cf = nullptr;
     std::atomic<int> accepted_num = {0};

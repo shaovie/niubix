@@ -31,8 +31,10 @@ public:
 
     virtual void backend_connect_ok();
     virtual void on_backend_connect_ok();
+
     virtual void backend_connect_fail();
     virtual void on_backend_connect_fail();
+
     virtual void backend_close();
     virtual void on_backend_close();
 private:

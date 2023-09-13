@@ -9,7 +9,8 @@
 #include "defines.h"
 #include "inet_addr.h"
 
-#include <string.h>
+#include <random>
+#include <cstring>
 
 http_conn::~http_conn() {
     if (this->sockaddr != nullptr)
@@ -58,21 +59,27 @@ bool http_conn::on_open() {
 }
 int http_conn::to_connect_backend() {
     int accepted_num = this->matched_app->accepted_num.fetch_add(1, std::memory_order_relaxed);
+    app::backend *ab = nullptr;
+    int backend_num = this->matched_app->cf->backend_list.size();
     if (this->matched_app->cf->policy == app::roundrobin) {
-        int idx = accepted_num % this->matched_app->cf->backend_list.size();
-        app::backend *ab = this->matched_app->cf->backend_list[idx];
-        struct sockaddr_in taddr;
-        inet_addr::parse_v4_addr(ab->host, &taddr);
-        nbx_inet_addr naddr{(struct sockaddr*)&taddr, sizeof(taddr)};
-        this->backend = new backend_conn(this->wrker, this, this->matched_app);
-        if (this->wrker->conn->connect(this->backend, naddr,
-                this->matched_app->cf->connect_backend_timeout) == -1) {
-            log::warn("connect to backend:%s fail!", ab->host.c_str());
-            return -1;
-        }
-        return 0;
+        int idx = 0;
+        if (backend_num > 0)
+            idx = accepted_num % backend_num;
+        ab = this->matched_app->cf->backend_list[idx];
+    } else if (this->matched_app->cf->policy == app::weighted) {
+        ab = this->matched_app->smooth_wrr(); // no need to check for nullptr
+    } else
+        return -1;
+    struct sockaddr_in taddr;
+    inet_addr::parse_v4_addr(ab->host, &taddr);
+    nbx_inet_addr naddr{(struct sockaddr*)&taddr, sizeof(taddr)};
+    this->backend = new backend_conn(this->wrker, this, this->matched_app);
+    if (this->wrker->conn->connect(this->backend, naddr,
+            this->matched_app->cf->connect_backend_timeout) == -1) {
+        log::warn("connect to backend:%s fail!", ab->host.c_str());
+        return -1;
     }
-    return -1;
+    return 0;
 }
 // NOTE frontend & backend 不能在各自的执行栈中操作对方的资源,这样会导致资源管理混乱
 // poller中有ready_events 队列, 有可能backend另一个事件已经wait到了
