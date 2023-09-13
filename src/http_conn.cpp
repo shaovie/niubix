@@ -58,17 +58,13 @@ bool http_conn::on_open() {
     return true;
 }
 int http_conn::to_connect_backend() {
-    int accepted_num = this->matched_app->accepted_num.fetch_add(1, std::memory_order_relaxed);
+    this->matched_app->accepted_num.fetch_add(1, std::memory_order_relaxed);
     app::backend *ab = nullptr;
-    int backend_num = this->matched_app->cf->backend_list.size();
-    if (this->matched_app->cf->policy == app::roundrobin) {
-        int idx = 0;
-        if (backend_num > 0)
-            idx = accepted_num % backend_num;
-        ab = this->matched_app->cf->backend_list[idx];
-    } else if (this->matched_app->cf->policy == app::weighted) {
-        ab = this->matched_app->smooth_wrr(); // no need to check for nullptr
-    } else
+    if (this->matched_app->cf->policy == app::roundrobin
+        || this->matched_app->cf->policy == app::weighted) {
+        ab = this->matched_app->get_backend_by_smooth_wrr(); // no need to check for nullptr
+    }
+    if (ab == nullptr)
         return -1;
     struct sockaddr_in taddr;
     inet_addr::parse_v4_addr(ab->host, &taddr);

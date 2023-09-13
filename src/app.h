@@ -5,6 +5,7 @@
 
 #include <string>
 #include <atomic>
+#include <mutex>
 #include <unordered_map>
 
 // Forward declarations
@@ -43,21 +44,24 @@ public:
         std::string listen;
         std::string host;
         std::string health_check_uri;
-        std::vector<backend *> backend_list;
+        std::vector<backend *> backend_list; // dynamic data, need mutex
     };
 
     class backend {
     public:
         backend() = default;
 
+        bool offline = false; // dynamic val
+        bool down = false;
         int weight = 0;
         int current = 0;
+        uint32_t counts = 0; // hit counter.
         std::string host;
     };
 
+
     // smooth weighted round-robin balancing
-    // https://github.com/phusion/nginx/commit/27e94984486058d73157038f7950a0a36ecc6e35
-    backend *smooth_wrr();
+    backend *get_backend_by_smooth_wrr();
 
     app::conf *cf = nullptr;
     std::atomic<int> accepted_num = {0};
@@ -65,6 +69,7 @@ public:
     std::atomic<int> backend_active_n = {0};
     std::atomic<int> backend_conn_ok_n = {0};
     std::atomic<int> backend_conn_fail_n = {0};
+    std::mutex backend_mtx;
 public:
     static int load_conf(nlohmann::json &);
 

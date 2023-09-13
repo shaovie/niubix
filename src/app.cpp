@@ -100,8 +100,10 @@ int app::load_conf(nlohmann::json &apps) {
                     fprintf(stderr, "niubix: conf - apps[%d].backend[%d].weight is invalid!\n", i, j);
                     return -1;
                 }
-            }
+            } else if (cf->policy == app::roundrobin)
+                bp->weight = 1;
             bp->host = bv.value("host", "");
+            bp->down = bv.value("down", false);
             struct sockaddr_in taddr;
             if (bp->host.length() == 0 || inet_addr::parse_v4_addr(bp->host, &taddr) == -1) {
                 fprintf(stderr, "niubix: conf - apps[%d].backend[%d].host is empty!\n", i, j);
@@ -130,17 +132,25 @@ int app::load_conf(nlohmann::json &apps) {
     } // end of `for (auto itor : apps)'
     return 0;
 }
+// https://github.com/phusion/nginx/commit/27e94984486058d73157038f7950a0a36ecc6e35
 // refer: https://tenfy.cn/2018/11/12/smooth-weighted-round-robin/
-app::backend* app::smooth_wrr() {
+app::backend* app::get_backend_by_smooth_wrr() {
     int total_w = 0;
     app::backend *best = nullptr;
+    this->backend_mtx.lock();
     for (auto bp : this->cf->backend_list) {
+        if (bp->down == true || bp->weight < 1)
+            continue;
         total_w += bp->weight;
         bp->current += bp->weight;
         if (best == nullptr || bp->current > best->current)
             best = bp;
     }
-    best->current -= total_w;
+    if (best != nullptr) {
+        best->current -= total_w;
+        ++(best->counts);
+    }
+    this->backend_mtx.unlock();
     return best;
 }
 int app::run_all(const ::conf *cf) {

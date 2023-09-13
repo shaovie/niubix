@@ -77,10 +77,10 @@ void log_impl::log(const char *format, va_list &va_ptr) {
     char log_record[MAX_LENGTH_OF_ONE_LOG + 1]; // stack variable
     int ret = ::snprintf(log_record,
         MAX_LENGTH_OF_ONE_LOG,
-        "%s %s.%03d %ld ",
+        "%s %s.%03d ",
         this->cached_date,
         time_buf,
-        msec, pthread_self());
+        msec);
     if (ret >= MAX_LENGTH_OF_ONE_LOG)
         ret = MAX_LENGTH_OF_ONE_LOG - 1;
     len += ret;

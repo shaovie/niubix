@@ -1,56 +1,46 @@
 {
 	"pid_file": "/tmp/niubix.pid",
 	"master_log": "/tmp/niubix-master.log",
-	"max_fds": 65535,
-	"?max_fds": "0 represents system default limits `ulimit -n`",
+	"max_fds": 65535, // 0 represents system default limits `ulimit -n`
 	"?above": "The above are the master configuration",
 
-	"worker_num": 0,
-	"?worker_num": "0 represents the same number of CPUs",
+	"worker_num": 0,  // 0 represents the same number of CPUs
 
 	"log_dir": "logs",
-	"log_level": "all",
-	"?log_level": "support `debug|info|warn|error|all|shutdown`, e.g. debug|warn",
+	"log_level": "all", // support `debug|info|warn|error|all|shutdown`, e.g. debug|warn,
 
 	"apps": [{
-		"listen": ":8081",
-		"?listen": "surpport :8080 or 192.168.1.101:8080 or []:8080",
+		"listen": ":8081", // surpport :8080 or 192.168.1.101:8080 or []:8080
 		"?listen": "[]:8080 represents ipv6 + ipv4 bind port 8080",
 
-		"protocol": "http",
-		"?protocol": "frontend transfer protocol",
+		"protocol": "http", // frontend transfer protocol
 
-		"prolicy": "roundrobin",
-		"?prolicy": "roundrobin/weighted/random/iphash",
+		"prolicy": "roundrobin", // roundrobin/weighted/random/iphash
 
-		"host": "default",
-		"?host": "e.g. api.niubix.com",
+		"host": "default", // e.g. api.niubix.com
 
-		"?connect_backend_timeout": "connect backend server timeout, > 0 in msec",
-		"connect_backend_timeout": 1000,
+		"connect_backend_timeout": 1000, // connect backend server timeout, > 0 in msec
 
-		"health_check_timeout": 1000,
-		"?health_check_timeout": "in msec",
-
+		"health_check_timeout": 1000, // in msec
 		"health_check_uri": "/test",
 		"?health_check_uri": "GET method. Must start with /",
 		"?health_check_uri": "just return the http status code=200",
 		"?health_check_uri": "just for http-protocol",
 		"?health_check_uri": "empty represents do not check health",
 
-		"x-forwarded-for": true,
-		"x-real-ip": true,
+		"x-forwarded-for": true, // optional, default true
+		"x-real-ip": true, // optional, default true
 
-		"backend_protocol": "http",
-		"?backend_protocol": "Worker to backend stranser protocol",
+		"backend_protocol": "http", // Worker to backend stranser protocol
 
 		"backends": [{
-			"weight": 50,
+			"down": true, // optional default false
+
+			"weight": 50, // for weighted
 			"?weight": "integer >= 0. radio = weight/sum(backend0+backend1+...+backendN)*100",
 			"?weight": "weight=0 skip this backend",
 
-			"host": "127.0.0.1:8080",
-			"?host": "ip+port"
+			"host": "127.0.0.1:8080" // ip+port"
 		}]
 	}]
 }
