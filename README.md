@@ -4,33 +4,10 @@ Just a reverse proxy service that surpasses Nignx
 
 实验性项目，NiubiX 只提供反向代理功能，大家轻拍有不好的地方可以留言或提 issue/pr.  觉得好就点个 star ，我会持续完善它
 
-与 Nginx/Haproxy 对比测试
+与 Haproxy 对比测试
 > Linux 5.19.0-1030-gcp #32~22.04.1-Ubuntu  
 > Instacne 1 GCP cloud VM, 2 cores, 4GB RAM 10.146.0.2 (nginx,haproxy, niubix run at here)   
 > Instacne 2 GCP cloud VM, 2 cores, 4GB RAM 10.146.0.3 (backend, wrk run at here)  
-
-**nginx version config**
-```
-nginx version: nginx/1.18.0 (Ubuntu)
-
-server {
-    listen       8082 reuseport;
-    server_name  localhost;
-
-    access_log  off;
-    error_log off;
-
-    location / {
-        proxy_pass http://10.146.0.3:8080;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
-
-root         516       1  0 Aug24 ?        00:00:00 nginx: master process /usr/sbin/nginx -g daemon on; master_process on;
-www-data  417322     516  0 12:13 ?        00:00:06 nginx: worker process
-www-data  417323     516  0 12:13 ?        00:00:08 nginx: worker process
-```
 
 **haproxy version config**
 ```
@@ -63,9 +40,9 @@ Requests/sec: 117888.45
 Transfer/sec:     17.31MB
 ```
 
-为了数据真实性，我只取了 1 次测试结果，连续对 3 个服务测试截图
+连续测试数据
 ```
-(base) root@instance-1:~# wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8083/xxx
+(base) root@instance-1:~# wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8083/xxx  haproxy
 Running 10s test @ http://10.146.0.2:8083/xxx
   2 threads and 100 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
@@ -74,7 +51,7 @@ Running 10s test @ http://10.146.0.2:8083/xxx
   182915 requests in 10.00s, 22.68MB read
 Requests/sec:  18288.39
 Transfer/sec:      2.27MB
-(base) root@instance-1:~# wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8081/xxx
+(base) root@instance-1:~# wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8081/xxx  niubix
 Running 10s test @ http://10.146.0.2:8081/xxx
   2 threads and 100 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
@@ -83,20 +60,7 @@ Running 10s test @ http://10.146.0.2:8081/xxx
   531283 requests in 10.01s, 78.03MB read
 Requests/sec:  53080.69
 Transfer/sec:      7.80MB
-(base) root@instance-1:~# wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8082/xxx
-Running 10s test @ http://10.146.0.2:8082/xxx
-  2 threads and 100 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    56.11ms   53.02ms 309.47ms   75.55%
-    Req/Sec     1.06k     2.29k    9.32k    92.00%
-  21070 requests in 10.01s, 3.42MB read
-Requests/sec:   2104.54
-Transfer/sec:    349.30KB
 ```
-![]( https://picx.zhimg.com/80/v2-835d6ae5863fb9643e82420ed1a18b1c_1440w.png?source=d16d100b)
-
-> 对于 nginx 的数据声明一下：只有偶尔能跑到 1.7w 的 qps ，如果 proxy_pass http://10.146.0.3:8080; 换到 127.0.0.1:8080 ，qps 能到 9000 qps ，至于局域网内为什么这么低通过 strace 也没看到异常，而且 cpu 也通跑满，不知道它在干嘛
-
 
 ```
 07:29:07.171557 IP 10.146.0.2.48798 > 10.146.0.3.8080: Flags [.], ack 1, win 511, options [nop,nop,TS val 1952514973 ecr 3339282563], length 0
@@ -151,7 +115,7 @@ tcpdump tcp port 8080 抓包查看 niubix 实际数据，包含 X-Real-IP, XFF �
 * niubix 支持 X-Real-IP,  X-Forwarded-For, 其他 Header 并没有解析  
 * http parser 只是简单的解析, 并没有完全实现
 * 只是初步测试, 并没有做冒烟测试和稳定性测试以及多条件下复杂测试
-* niubix 均衡策略使用的是 roundrobin(别的也还没实现呢), nginx/haproxy 也是一样的策略
+* niubix 均衡策略使用的是 roundrobin(别的也还没实现呢), haproxy 也是一样的策略
 * backend 测试程序[code](https://github.com/shaovie/reactor/blob/main/example/techempower.cpp)
 * niubix 不解析 response 内容
 * 功能逐步完善中, 基本框架是过硬的, 我相信这是一个好的开始
