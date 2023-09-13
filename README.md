@@ -4,10 +4,39 @@ Just a reverse proxy service
 
 实验性项目，NiubiX 只提供反向代理功能，大家轻拍有不好的地方可以留言或提 issue/pr.  觉得好就点个 star ，我会持续完善它
 
-与 Haproxy 对比测试
+与 Nginx/Haproxy 对比测试
 > Linux 5.19.0-1030-gcp #32~22.04.1-Ubuntu  
 > Instacne 1 GCP cloud VM, 2 cores, 4GB RAM 10.146.0.2 (nginx,haproxy, niubix run at here)   
 > Instacne 2 GCP cloud VM, 2 cores, 4GB RAM 10.146.0.3 (backend, wrk run at here)  
+
+**nginx version config**
+```
+nginx version: nginx/1.24.0 (Ubuntu)
+
+upstream backend {
+	server 10.146.0.3:8080;
+	keepalive 16;
+}
+server {
+	listen       8082 reuseport;
+	server_name  localhost;
+
+	access_log  off;
+	error_log 	off;
+
+	location / {
+		proxy_pass http://backend;
+		proxy_http_version 1.1;
+		proxy_set_header Connection "";
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	}
+}
+
+root         516       1  0 Aug24 ?        00:00:00 nginx: master process /usr/sbin/nginx -g daemon on; master_process on;
+www-data  417322     516  0 12:13 ?        00:00:06 nginx: worker process
+www-data  417323     516  0 12:13 ?        00:00:08 nginx: worker process
+```
 
 **haproxy version config**
 ```
@@ -42,25 +71,35 @@ Transfer/sec:     17.31MB
 
 连续测试数据
 ```
-(base) root@instance-1:~# wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8083/xxx  haproxy
-Running 10s test @ http://10.146.0.2:8083/xxx
-  2 threads and 100 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     5.54ms    2.22ms  47.04ms   77.88%
-    Req/Sec     9.19k     1.24k   12.52k    83.00%
-  182915 requests in 10.00s, 22.68MB read
-Requests/sec:  18288.39
-Transfer/sec:      2.27MB
-(base) root@instance-1:~# wrk -t 2 -c 100 -d 10s  http://10.146.0.2:8081/xxx  niubix
+(base) root@instance-1:~# wrk -t 2 -c 100 -d 10s -H 'Connection: keep-alive' http://10.146.0.2:8081/niubix
 Running 10s test @ http://10.146.0.2:8081/xxx
   2 threads and 100 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     1.14ms  437.00us   5.50ms   65.93%
-    Req/Sec    26.69k     1.06k   28.81k    76.00%
-  531283 requests in 10.01s, 78.03MB read
-Requests/sec:  53080.69
-Transfer/sec:      7.80MB
+    Latency     1.22ms  800.49us  19.71ms   94.57%
+    Req/Sec    26.67k     1.92k   29.53k    76.00%
+  530996 requests in 10.01s, 77.99MB read
+Requests/sec:  53032.21
+Transfer/sec:      7.79MB
+(base) root@instance-1:~# wrk -t 2 -c 100 -d 10s -H 'Connection: keep-alive' http://10.146.0.2:8082/nginx
+Running 10s test @ http://10.146.0.2:8082/xxx
+  2 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    10.16ms   13.47ms  93.49ms   85.88%
+    Req/Sec     8.64k     7.59k   23.31k    68.50%
+  172028 requests in 10.01s, 26.41MB read
+Requests/sec:  17188.44
+Transfer/sec:      2.64MB
+(base) root@instance-1:~# wrk -t 2 -c 100 -d 10s -H 'Connection: keep-alive' http://10.146.0.2:8083/haproxy
+Running 10s test @ http://10.146.0.2:8083/xxx
+  2 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     6.49ms    8.64ms 141.16ms   97.99%
+    Req/Sec     8.89k     1.25k   13.48k    85.86%
+  176005 requests in 10.00s, 21.82MB read
+Requests/sec:  17598.35
+Transfer/sec:      2.18MB
 ```
+![](https://picx.zhimg.com/80/v2-80ddd7903e85bffbacb4c4b071241f01_1440w.png)
 
 ```
 07:29:07.171557 IP 10.146.0.2.48798 > 10.146.0.3.8080: Flags [.], ack 1, win 511, options [nop,nop,TS val 1952514973 ecr 3339282563], length 0
@@ -101,7 +140,7 @@ Transfer/sec:      7.80MB
 	0x00b0:  6e74 2d4c 656e 6774 683a 2031 330d 0a0d  nt-Length:.13...
 	0x00c0:  0a48 656c 6c6f 2c20 576f 726c 6421       .Hello,.World!
 ```
-![]( https://pica.zhimg.com/80/v2-d5ae358121a2c93e4544cbea1925a020_1440w.png?source=d16d100b)
+![](https://pica.zhimg.com/80/v2-d5ae358121a2c93e4544cbea1925a020_1440w.png?source=d16d100b)
 tcpdump tcp port 8080 抓包查看 niubix 实际数据，包含 X-Real-IP, XFF ，并且响应在微秒级
 
 #### 目前具备功能：
