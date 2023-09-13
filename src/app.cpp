@@ -113,7 +113,7 @@ int app::load_conf(nlohmann::json &apps) {
         int total_w = 0;
         for (auto bp : cf->backend_list)
             total_w += bp->weight;
-        if (total_w == 0) {
+        if (cf->policy == app::weighted && total_w == 0) {
             fprintf(stderr, "niubix: conf - apps[%d] no valid(weight) backend!\n", i);
             return -1;
         }
