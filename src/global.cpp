@@ -33,5 +33,5 @@ void g::let_worker_shutdown() {
 
     // timing check
     worker_shutdown *ws = new worker_shutdown(g::main_worker);
-    g::main_worker->schedule_timer(ws, 100, 100);
+    g::main_worker->schedule_timer(ws, 10, 100);
 }
