@@ -23,11 +23,11 @@ bool backend_conn::on_open() {
     
     this->frontend->backend_connect_ok();
 
-    this->matched_app->backend_active_n.fetch_add(1, std::memory_order_relaxed);
     if (this->wrker->add_ev(this, this->get_fd(), ev_handler::ev_read) != 0) {
         log::error("new backend conn add to poller fail! %s", strerror(errno));
         return false;
     }
+    this->matched_app->backend_active_n.fetch_add(1, std::memory_order_relaxed);
     this->state = active_ok;
     return true;
 }
@@ -57,7 +57,8 @@ void backend_conn::on_frontend_close() {
     this->on_close();
 }
 void backend_conn::on_close() {
-    this->matched_app->backend_active_n.fetch_sub(1, std::memory_order_relaxed);
+    if (this->state == active_ok)
+        this->matched_app->backend_active_n.fetch_sub(1, std::memory_order_relaxed);
     if (this->frontend != nullptr) {
         this->frontend->backend_close();
         this->frontend = nullptr; // 解除关系

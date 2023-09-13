@@ -137,7 +137,8 @@ void http_conn::on_backend_close() {
 }
 void http_conn::on_close() { // maybe trigger EPOLLHUP | EPOLLERR
     if (this->matched_app != nullptr)
-        this->matched_app->frontend_active_n.fetch_sub(1, std::memory_order_relaxed);
+        if (this->state == active_ok)
+            this->matched_app->frontend_active_n.fetch_sub(1, std::memory_order_relaxed);
     
     if (this->backend != nullptr) {
         this->backend->frontend_close();
