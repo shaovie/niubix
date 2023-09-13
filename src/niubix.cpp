@@ -149,6 +149,10 @@ static void master_run(conf *cf) {
         ::exit(1);
     
     master_log("\n%s master run %d\n", fmttime(), g::pid);
+    struct rlimit limit;
+    :getrlimit(RLIMIT_NOFILE, &limit)
+    master_log("%s getrlimit(RLIMIT_NOFILE): %d:%d\n", limit.rlim_cur, limit.rlim_max);
+
     ::signal(SIGUSR1, new_worker_start_ok);
     ::signal(SIGHUP,  reload_worker);
     ::signal(SIGTERM, master_shutdown);
@@ -158,7 +162,7 @@ static void master_run(conf *cf) {
     while (1) {
         int pid = exec_worker();
         g::child_pid = pid;
-        master_log("%s new child %d\n", fmttime(), pid);
+        master_log("%s start worker %d\n", fmttime(), pid);
         
         // parent
         while (1) {
