@@ -1,6 +1,6 @@
 # NiubiX
 
-Just a reverse proxy service that surpasses Nignx
+Just a reverse proxy service
 
 实验性项目，NiubiX 只提供反向代理功能，大家轻拍有不好的地方可以留言或提 issue/pr.  觉得好就点个 star ，我会持续完善它
 
