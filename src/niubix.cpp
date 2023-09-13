@@ -150,7 +150,7 @@ static void master_run(conf *cf) {
     
     master_log("\n%s master run %d\n", fmttime(), g::pid);
     struct rlimit limit;
-    :getrlimit(RLIMIT_NOFILE, &limit)
+    getrlimit(RLIMIT_NOFILE, &limit);
     master_log("%s getrlimit(RLIMIT_NOFILE): %d:%d\n", limit.rlim_cur, limit.rlim_max);
 
     ::signal(SIGUSR1, new_worker_start_ok);
