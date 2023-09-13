@@ -30,8 +30,8 @@ public:
 
     virtual void on_close();
 
-    virtual void frontend_close();
-    virtual void on_frontend_close();
+    void frontend_close();
+    void on_frontend_close();
 private:
     char state = 0;
     app *matched_app = nullptr;
