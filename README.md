@@ -4,7 +4,9 @@ Just a reverse proxy service
 
 实验性项目，NiubiX 只提供反向代理功能，大家轻拍有不好的地方可以留言或提 issue/pr.  觉得好就点个 star ，我会持续完善它
 
-与 Nginx/Haproxy 对比测试
+与 Nginx/Haproxy 对比测试 QPS可以达到3倍以上  
+
+测试环境:
 > Linux 5.19.0-1030-gcp #32~22.04.1-Ubuntu  
 > Instacne 1 GCP cloud VM, 2 cores, 4GB RAM 10.146.0.2 (nginx,haproxy, niubix run at here)   
 > Instacne 2 GCP cloud VM, 2 cores, 4GB RAM 10.146.0.3 (backend, wrk run at here)  
