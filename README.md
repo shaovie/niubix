@@ -166,6 +166,7 @@ tcpdump tcp port 8080 抓包查看 niubix 实际数据，包含 X-Real-IP, XFF �
 - [x] Gracefully reload (like nginx reload)
 - [x] Health check
 - [ ] POST/DELETE/PUT/HEAD/... support
+- [ ] Admin api
 - [ ] More balance prolicy
 - [ ] Better HTTP parser
 - [ ] TCP protocol + Proxy Protocol
