@@ -149,7 +149,8 @@ int log_impl::new_file(const int year, const int month, const int mday) {
     this->new_file_year = year;
     this->new_file_month = month;
     this->new_file_mday = mday;
-    ::snprintf(this->cached_date, sizeof(this->cached_date), "%d-%02d-%02d", year, month, mday);
+    const uint32_t rmonth = month + 1; // avoid compile warning
+    ::snprintf(this->cached_date, sizeof(this->cached_date), "%d-%02d-%02d", year, rmonth, mday);
     return 0;
 }
 //= log

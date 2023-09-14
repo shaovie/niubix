@@ -6,6 +6,7 @@
 #include "acceptor.h"
 #include "http_conn.h"
 #include "inet_addr.h"
+#include "health_check.h"
 
 #include "nlohmann/json.hpp"
 
@@ -14,13 +15,14 @@
 
 std::unordered_map<int/*listen port*/, std::vector<app *> *> app::app_map_by_port;
 std::unordered_map<std::string/*listen*/, int/*protocol*/> app::listen_set;
-std::unordered_map<std::string/*host*/, app *> app::app_map_by_host;
+std::vector<app *> app::alls;
 
 int app::load_conf(nlohmann::json &apps) {
     std::set<std::string/*protocol:port*/> protocol_port_set;
+    std::set<std::string/*host*/> app_host_set;
     int i = 0;
     for (auto itor : apps) {
-        i = app::app_map_by_host.size();
+        i = app::alls.size();
         std::unique_ptr<app::conf> cf(new app::conf());
         cf->listen = itor.value("listen", "");
         int port = 0;
@@ -29,19 +31,19 @@ int app::load_conf(nlohmann::json &apps) {
             fprintf(stderr, "niubix: conf - apps[%d].listen is invalid!\n", i);
             return -1;
         }
-        cf->host = itor.value("host", "");
-        if (cf->host.length() == 0) {
+        cf->http_host = itor.value("http_host", "");
+        if (cf->http_host.length() == 0) {
             fprintf(stderr, "niubix: conf - apps[%d].host is empty!\n", i);
             return -1;
         }
-        if (app::app_map_by_host.count(cf->host) == 1) {
+        if (app_host_set.count(cf->http_host) == 1) {
             fprintf(stderr, "niubix: conf - apps[%d].host is duplicate, already exists!\n", i);
             return -1;
         }
 
-        cf->policy = app::parse_policy(itor.value("prolicy", ""));
-        if (cf->policy == -1) {
-            fprintf(stderr, "niubix: conf - apps[%d].policy is invalid!\n", i);
+        cf->balance_policy = app::parse_balance_policy(itor.value("balance_policy", ""));
+        if (cf->balance_policy == -1) {
+            fprintf(stderr, "niubix: conf - apps[%d].balance_policy is invalid!\n", i);
             return -1;
         }
 
@@ -55,27 +57,15 @@ int app::load_conf(nlohmann::json &apps) {
             fprintf(stderr, "niubix: conf - apps[%d].listen + protocol is duplicate, already exists!\n", i);
             return -1;
         }
-        int protocolv = app::http_protocol;
-        app::listen_set[cf->listen] = protocolv;
+        protocol_port_set.insert(protocol_port); // 相同协议+端口 不能重复
+        cf->protocol = app::http_protocol; // TODO
+        app::listen_set[cf->listen] = cf->protocol;
 
         cf->connect_backend_timeout = itor.value("connect_backend_timeout", -1);
         if (cf->connect_backend_timeout < 1) {
             fprintf(stderr, "niubix: conf - apps[%d].connect_backend_timeout is invalid!\n", i);
             return -1;
         }
-        cf->health_check_timeout = itor.value("health_check_timeout", -1);
-        if (cf->health_check_timeout < 1) {
-            fprintf(stderr, "niubix: conf - apps[%d].health_check_timeout is invalid!\n", i);
-            return -1;
-        }
-        cf->health_check_uri = itor.value("health_check_uri", "");
-        if (cf->health_check_uri.length() > 0 && cf->protocol == app::http_protocol) {
-            if (cf->health_check_uri[0] != '/') {
-                fprintf(stderr, "niubix: conf - apps[%d].health_check_uri is invalid!\n", i);
-                return -1;
-            }
-        }
-
         cf->with_x_forwarded_for = itor.value("x-forwarded-for", true);
         cf->with_x_real_ip = itor.value("x-real-ip", true);
 
@@ -84,6 +74,7 @@ int app::load_conf(nlohmann::json &apps) {
             fprintf(stderr, "niubix: conf - apps[%d].backend_protocol is invalid!\n", i);
             return -1;
         }
+        cf->backend_protocol = app::http_protocol; // TODO
 
         nlohmann::json &backends = itor["backends"];
         if (backends.empty() || !backends.is_array()) {
@@ -94,34 +85,60 @@ int app::load_conf(nlohmann::json &apps) {
         for (auto bv : backends) {
             j = cf->backend_list.size();
             std::unique_ptr<app::backend> bp(new app::backend());
-            if (cf->policy == app::roundrobin) {
+            if (cf->balance_policy == app::roundrobin) {
                 bp->weight = bv.value("weight", 1);
                 if (bp->weight < 0) {
-                    fprintf(stderr, "niubix: conf - apps[%d].backend[%d].weight is invalid!\n", i, j);
+                    fprintf(stderr,
+                        "niubix: conf - apps[%d].backend[%d].weight is invalid!\n", i, j);
                     return -1;
                 }
             }
-            bp->host = bv.value("host", "");
             bp->down = bv.value("down", false);
+            bp->host = bv.value("host", "");
             struct sockaddr_in taddr;
             if (bp->host.length() == 0 || inet_addr::parse_v4_addr(bp->host, &taddr) == -1) {
                 fprintf(stderr, "niubix: conf - apps[%d].backend[%d].host is empty!\n", i, j);
                 return -1;
             }
+            bp->health_check_period = bv.value("health_check_period", 0);
+            if (bp->health_check_period > 0) {
+                bp->health_check_timeout = bv.value("health_check_timeout", 0);
+                if (bp->health_check_timeout < 1) {
+                    fprintf(stderr,
+                        "niubix: conf - apps[%d].health_check_timeout is invalid!\n", i);
+                    return -1;
+                }
+                bp->health_check_uri = bv.value("health_check_uri", "");
+                if (bp->health_check_uri.length() > 0
+                    && cf->backend_protocol == app::http_protocol) {
+                    if (bp->health_check_uri[0] != '/') {
+                        fprintf(stderr,
+                            "niubix: conf - apps[%d].health_check_uri is invalid!\n", i);
+                        return -1;
+                    }
+                    if (bp->health_check_uri.length() > 512) {
+                        fprintf(stderr,
+                            "niubix: conf - apps[%d].health_check_uri too long! must < 512\n", i);
+                        return -1;
+                    }
+                }
+            }
+
             cf->backend_list.push_back(bp.release());
         } // end of `for (auto bv : backends)'
 
         int total_w = 0;
         for (auto bp : cf->backend_list)
             total_w += bp->weight;
-        if (cf->policy == app::roundrobin && total_w == 0) {
+        if (cf->balance_policy == app::roundrobin && total_w == 0) {
             fprintf(stderr, "niubix: conf - apps[%d] no valid(weight) backend!\n", i);
             return -1;
         }
         
         app *ap = new app();
         ap->cf = cf.release();
-        app::app_map_by_host[ap->cf->host] = ap;
+        app::alls.push_back(ap);
+        app_host_set.insert(ap->cf->http_host);
 
         std::vector<app *> *vp = app::app_map_by_port[port];
         if (vp == nullptr)
@@ -131,6 +148,18 @@ int app::load_conf(nlohmann::json &apps) {
     } // end of `for (auto itor : apps)'
     return 0;
 }
+void app::backend_offline(app::backend *ab) {
+    this->backend_mtx.lock(); // health_check 发生不频繁 共用一把大锁就可以了
+    ab->health_check_ok_times = 0;
+    ab->offline = true;
+    this->backend_mtx.unlock();
+}
+void app::backend_online(app::backend *ab) {
+    this->backend_mtx.lock();
+    if (++(ab->health_check_ok_times) > 2)
+        ab->offline = false;
+    this->backend_mtx.unlock();
+}
 // https://github.com/phusion/nginx/commit/27e94984486058d73157038f7950a0a36ecc6e35
 // refer: https://tenfy.cn/2018/11/12/smooth-weighted-round-robin/
 app::backend* app::get_backend_by_smooth_wrr() {
@@ -138,7 +167,7 @@ app::backend* app::get_backend_by_smooth_wrr() {
     app::backend *best = nullptr;
     this->backend_mtx.lock();
     for (auto bp : this->cf->backend_list) {
-        if (bp->down == true || bp->weight < 1)
+        if (bp->down == true || bp->weight < 1 || bp->offline == true)
             continue;
         total_w += bp->weight;
         bp->current += bp->weight;
@@ -168,6 +197,20 @@ int app::run_all(const ::conf *cf) {
             if (acc->open(kv.first, cf) == -1) {
                 log::error("listen %s fail!", kv.first.c_str());
                 return -1;
+            }
+        }
+    }
+
+    // health check
+    for (auto ap : app::alls) {
+        for (auto ab : ap->cf->backend_list) {
+            if (ab->health_check_period < 1)
+                continue;
+            if (ap->cf->backend_protocol == app::http_protocol) {
+                if (ab->health_check_uri.empty())
+                    continue;
+                http_health_check *hhc = new http_health_check(g::main_worker, ap, ab);
+                g::main_worker->schedule_timer(hhc, 100, ab->health_check_period);
             }
         }
     }

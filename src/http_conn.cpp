@@ -15,8 +15,6 @@
 http_conn::~http_conn() {
     if (this->sockaddr != nullptr)
         ::free(this->sockaddr);
-    if (this->backend != nullptr)
-        this->backend->on_close();
     if (this->partial_buf != nullptr)
         ::free(this->partial_buf);
     if (this->local_addr != nullptr)
@@ -60,7 +58,7 @@ bool http_conn::on_open() {
 int http_conn::to_connect_backend() {
     this->matched_app->accepted_num.fetch_add(1, std::memory_order_relaxed);
     app::backend *ab = nullptr;
-    if (this->matched_app->cf->policy == app::roundrobin)
+    if (this->matched_app->cf->balance_policy == app::roundrobin)
         ab = this->matched_app->get_backend_by_smooth_wrr(); // no need to check for nullptr
     if (ab == nullptr)
         return -1;
@@ -70,6 +68,8 @@ int http_conn::to_connect_backend() {
     this->backend = new backend_conn(this->wrker, this, this->matched_app);
     if (this->wrker->conn->connect(this->backend, naddr,
             this->matched_app->cf->connect_backend_timeout) == -1) {
+        delete this->backend;
+        this->backend = nullptr;
         log::warn("connect to backend:%s fail!", ab->host.c_str());
         return -1;
     }
@@ -92,7 +92,6 @@ void http_conn::on_backend_connect_ok() {
     if (fd == -1)
         return ;
     socket::set_nodelay(fd);
-
     if (this->wrker->add_ev(this, fd, ev_handler::ev_read) != 0) {
         log::error("new http_conn add to poller fail! %s", strerror(errno));
         this->on_close();

@@ -17,6 +17,9 @@ int g::init(const conf *cf) {
         log::error("main worker open fail!");
         return -1;
     }
+    worker_cache_time *wct = new worker_cache_time(g::main_worker);
+    g::main_worker->schedule_timer(wct, 10, 48);
+
     worker_stat_output *wso = new worker_stat_output(g::main_worker);
     g::main_worker->schedule_timer(wso, 800, 1000);
 

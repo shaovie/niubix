@@ -27,7 +27,7 @@ public:
             return -1;
         if (addr[0] == '[') { // ipv6
             auto p = addr.rfind(":");
-            if (p == addr.npos || (p > 0 && p < 2))
+            if (p == addr.npos || (p > 0 && p < (sizeof("[]")-1)))
                 return -1;
             ip = addr.substr(1, p - 1);
             try {
@@ -37,7 +37,7 @@ public:
             }
         } else {
             auto p = addr.find(":");
-            if (p == addr.npos || (p > 0 && p < 7))
+            if (p == addr.npos || (p > 0 && p < (sizeof("0.0.0.0")-1)))
                 return -1;
             ip = addr.substr(0, p);
             try {
@@ -52,7 +52,7 @@ public:
     // addr "192.168.0.1:8080"
     static int parse_v4_addr(const std::string &addr, struct sockaddr_in *saddr) {
         auto p = addr.find(":");
-        if (p == addr.npos || (p > 0 && p < 7))
+        if (p == addr.npos || (p > 0 && p < (sizeof("0.0.0.0")-1)))
             return -1;
         std::string ip = addr.substr(0, p);
         int port = 0;

@@ -9,8 +9,7 @@
 #include <unordered_map>
 
 // Forward declarations
-class conf;
-class leader;
+class conf;;
 
 class app {
 public:
@@ -22,7 +21,7 @@ public:
     enum {
      http_protocol = 1,
     };
-    static int parse_policy(const std::string &s) {
+    static int parse_balance_policy(const std::string &s) {
         if (s == "roundrobin") return roundrobin;
         if (s == "random")     return random;
         if (s == "iphash")     return iphash;
@@ -34,14 +33,12 @@ public:
     public:
         bool with_x_forwarded_for = true;
         bool with_x_real_ip = true;
-        int policy = 0;
+        int balance_policy  = 0;
         int connect_backend_timeout = 1000; // msec
-        int health_check_timeout    = 1000; // msec
         int protocol = 0;
         int backend_protocol = 0;
         std::string listen;
-        std::string host;
-        std::string health_check_uri;
+        std::string http_host;
         std::vector<backend *> backend_list; // dynamic data, need mutex
     };
 
@@ -50,13 +47,19 @@ public:
         backend() = default;
 
         bool offline = false; // dynamic val
-        bool down = false;
+        bool down = false; // dynamic
         int weight = 0;
         int current = 0;
         uint32_t counts = 0; // hit counter.
+        int health_check_period  = 0; // msec
+        int health_check_timeout = 0; // msec
+        int health_check_ok_times = 0;
         std::string host;
+        std::string health_check_uri;
     };
 
+    void backend_online(backend *);
+    void backend_offline(backend *);
 
     // smooth weighted round-robin balancing
     backend *get_backend_by_smooth_wrr();
@@ -76,7 +79,7 @@ public:
 public:
     static std::unordered_map<int/*listen port*/, std::vector<app *> *> app_map_by_port;
     static std::unordered_map<std::string/*listen*/, int/*protocol*/> listen_set;
-    static std::unordered_map<std::string/*host*/, app *> app_map_by_host;
+    static std::vector<app *> alls;
 };
 
 #endif // NBX_ROUTER_H_

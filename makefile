@@ -34,6 +34,7 @@
                                          connector.cpp \
                                          evpoll.cpp \
                                          global.cpp \
+										 health_check.cpp \
                                          http_conn.cpp \
                                          io_handle.cpp \
                                          leader.cpp \

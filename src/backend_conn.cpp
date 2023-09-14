@@ -1,5 +1,6 @@
 #include "backend_conn.h"
 #include "frontend_conn.h"
+#include "socket.h"
 #include "worker.h"
 #include "defines.h"
 #include "log.h"
@@ -23,7 +24,9 @@ bool backend_conn::on_open() {
     
     this->frontend->backend_connect_ok();
 
-    if (this->wrker->add_ev(this, this->get_fd(), ev_handler::ev_read) != 0) {
+    int fd = this->get_fd();
+    socket::set_nodelay(fd);
+    if (this->wrker->add_ev(this, fd, ev_handler::ev_read) != 0) {
         log::error("new backend conn add to poller fail! %s", strerror(errno));
         return false;
     }
