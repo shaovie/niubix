@@ -9,6 +9,9 @@
     "log_dir": "logs", // log info of worker at runtime
     "log_level": "all", // support `debug|info|warn|error|all|shutdown`, e.g. debug|warn,
 
+    // TODO admin api or web
+    "listen_admin": ":9527",
+
     "apps": [
         {
             "name": "test", // must, unique
@@ -25,13 +28,11 @@
 
             "x-forwarded-for": true, // optional, default true
             "x-real-ip": true, // optional, default true
-            // Support for hot updates
 
             "backend_protocol": "http", // Worker to backend stranser protocol
 
             "backends": [
                 {
-                    // todo
                     "health_check_period": 1000, // in msec, check period, integer, 0: not check
                     "health_check_timeout": 1000, // in msec, integer, must > 0
                     "health_check_uri": "/x", // The complete URL is: backend_protocol://host+health_check_uri
@@ -42,7 +43,7 @@
                     // go offline after one failure, and resume online after three consecutive successes
                     // Hot update not supported
 
-                    "down": true, // optional default false
+                    "down": true, // optional default false, TODO hot update
                     "weight": 50, // optional, >=0, default 1, 0 will skip this one, for roundrobin 
                     "host": "10.146.0.3:8080" // ip+port"
                 }
