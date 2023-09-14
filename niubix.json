@@ -11,6 +11,7 @@
 
     "apps": [
         {
+            "name": "test", // must, unique
             "listen": ":8081", // surpport :8080 or 192.168.1.101:8080 or []:8080
             "?listen": "[]:8080 represents ipv6 + ipv4 bind port 8080",
 

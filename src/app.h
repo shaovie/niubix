@@ -37,6 +37,7 @@ public:
         int connect_backend_timeout = 1000; // msec
         int protocol = 0;
         int backend_protocol = 0;
+        std::string name;
         std::string listen;
         std::string http_host;
         std::vector<backend *> backend_list; // dynamic data, need mutex

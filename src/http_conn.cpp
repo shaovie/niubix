@@ -62,6 +62,7 @@ int http_conn::to_connect_backend() {
         ab = this->matched_app->get_backend_by_smooth_wrr(); // no need to check for nullptr
     if (ab == nullptr)
         return -1;
+    
     struct sockaddr_in taddr;
     inet_addr::parse_v4_addr(ab->host, &taddr);
     nbx_inet_addr naddr{(struct sockaddr*)&taddr, sizeof(taddr)};

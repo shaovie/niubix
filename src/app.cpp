@@ -20,10 +20,22 @@ std::vector<app *> app::alls;
 int app::load_conf(nlohmann::json &apps) {
     std::set<std::string/*protocol:port*/> protocol_port_set;
     std::set<std::string/*host*/> app_host_set;
+    std::set<std::string/*name*/> app_name_set;
     int i = 0;
     for (auto itor : apps) {
         i = app::alls.size();
         std::unique_ptr<app::conf> cf(new app::conf());
+        cf->name = itor.value("name", "");
+        if (cf->name.length() == 0) {
+            fprintf(stderr, "niubix: conf - apps[%d].name is empty!\n", i);
+            return -1;
+        }
+        if (app_name_set.count(cf->name) == 1) {
+            fprintf(stderr, "niubix: conf - apps[%d].name is duplicate!\n", i);
+            return -1;
+        }
+        app_name_set.insert(cf->name);
+
         cf->listen = itor.value("listen", "");
         int port = 0;
         std::string ip;
@@ -37,7 +49,7 @@ int app::load_conf(nlohmann::json &apps) {
             return -1;
         }
         if (app_host_set.count(cf->http_host) == 1) {
-            fprintf(stderr, "niubix: conf - apps[%d].host is duplicate, already exists!\n", i);
+            fprintf(stderr, "niubix: conf - apps[%d].host is duplicate!\n", i);
             return -1;
         }
 
@@ -54,7 +66,7 @@ int app::load_conf(nlohmann::json &apps) {
         }
         std::string protocol_port = protocol + ":" + std::to_string(port);
         if (protocol_port_set.count(protocol_port) == 1) {
-            fprintf(stderr, "niubix: conf - apps[%d].listen + protocol is duplicate, already exists!\n", i);
+            fprintf(stderr, "niubix: conf - apps[%d].listen + protocol is duplicate!\n", i);
             return -1;
         }
         protocol_port_set.insert(protocol_port); // 相同协议+端口 不能重复
