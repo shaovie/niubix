@@ -1,4 +1,5 @@
 #include "http_parser.h"
+#include "defines.h"
 
 /* Tokens as defined by rfc 2616. Also lowercases them.
  *        token       = 1*<any CHAR except CTLs or separators>
@@ -40,5 +41,120 @@ static const char tokens[256] = {
     'p',     'q',     'r',     's',     't',     'u',     'v',     'w',
 /* 120  x   121  y   122  z   123  {   124  |   125  }   126  ~   127 del */
     'x',     'y',     'z',      0,      '|',      0,      '~',       0 };
-int http_parser::parse(const char *buf, const int len) {
+
+// not surpport HTTP/0.9
+// Just support METHOD /xxx?p1=x&p2=a#hash!xxx HTTP/1.0
+int http_parser::parse_request_line() {
+    int state = this->state;
+    const char *pos = nullptr;
+    const char *m = nullptr;
+    char ch = 0;
+    for (pos = this->start; pos < this->end; ++pos) {
+        ch = *pos;
+        switch (state) {
+        case st_start:
+            this->req_start = pos;
+            if (ch == CR || ch == LF) break;
+            if (ch < 'A' || ch > 'Z') return -1;
+            state = st_method;
+            this->method_start = pos;
+            --pos;
+            break;
+        case st_method:
+            if (ch != ' ') break;
+            m = this->method_start;
+            ch = *m;
+            switch (pos - m) {
+            case 3:
+                if (ch == 'G' && m[1] == 'E' && m[2] == 'T')
+                    this->method = http_get;
+                else if (ch == 'P' && m[1] == 'U' && m[2] == 'T')
+                    this->method = http_put;
+                break;
+            case 4:
+                if (ch == 'P' && m[1] == 'O' && m[2] == 'S' && m[3] == 'T')
+                    this->method = http_post;
+                break;
+            case 6:
+                if (ch == 'D' && m[1] == 'E' && m[2] == 'L' && m[4] == 'T')
+                    this->method = http_delete;
+                break;
+            } // end of `switch (pos - m)'
+
+            if (this->method == http_unknown) return -1;
+            state = st_spaces_before_uri;
+            break;
+        case st_spaces_before_uri:
+            if (ch == '/') {
+                this->uri_start = pos;
+                state = st_after_slash_in_uri;
+                break;
+            } else if (ch != ' ') // not surpport METHOD http://xxx.com/sdf HTTP/1.1
+                return -1;
+            break;
+        case st_after_slash_in_uri:
+            if (ch == ' ') { this->uri_end = pos; state = st_http_09; }
+            if (ch == CR)  { this->uri_end = pos; this->http_minor = 9; state = st_almost_done; }
+            if (ch == LF)  { this->uri_end = pos; this->http_minor = 9; state = st_end; }
+            break;
+        case st_http_09:
+            if (ch == ' ') break;
+            if (ch == CR)  { this->http_minor = 9; state = st_almost_done; }
+            if (ch == LF)  { this->http_minor = 9; state = st_end; }
+            if (ch == 'H') { state = st_http_H; };
+            break;
+        case st_http_H:
+            if (ch != 'T') return -1;
+            state = st_http_HT;
+            break;
+        case st_http_HT:
+            if (ch != 'T') return -1;
+            state = st_http_HTT;
+            break;
+        case st_http_HTT:
+            if (ch != 'P') return -1;
+            state = st_http_HTTP;
+            break;
+        case st_http_HTTP:
+            if (ch != '/') return -1;
+            state = st_first_major_digit;
+            break;
+        case st_first_major_digit:
+            if (ch < '1' || ch > '9') return -1;
+            this->http_major = ch - '0';
+            if (this->http_major > 1) return -1;
+            state = st_major_digit;
+            break;
+        case st_major_digit: // 只支持 1.0 1.1  版本号1位数, 不支持10.1, 1.12
+            if (ch != '.') return -1;
+            state = st_first_minor_digit;
+            break;
+        case st_first_minor_digit:
+            if (ch < '1' || ch > '9') return -1;
+            this->http_minor = ch - '0';
+            state = st_after_version;
+            break;
+        case st_after_version:
+            if (ch == CR) { state = st_almost_done; break; }
+            if (ch != ' ') return -1;
+            state = st_spaces_after_version;
+            break;
+        case st_spaces_after_version:
+            if (ch == ' ') break;
+            if (ch == CR) { state = st_almost_done; break; }
+            if (ch == LF) { state = st_end; break; }
+            return -1;
+        case st_almost_done:
+            this->req_end = pos - 1;
+            if (ch == LF) { state = st_end; break; }
+            return -1;
+        } // end of `switch (state)'
+        if (state == st_end)
+            break;
+    } // end of `for (int i = 0; i < len; ++i)'
+    this->state = st_start;
+    this->start = pos + 1;
+    if (this->req_end == nullptr)
+        this->req_end = pos;
+    return 0;
 }
