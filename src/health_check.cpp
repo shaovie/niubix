@@ -5,7 +5,7 @@
 #include "worker.h"
 #include "log.h"
 
-class http_health_check_conn : public io_handle {
+class http_health_check_conn final : public io_handle {
 public:
     http_health_check_conn(worker *w, http_health_check *ck, const std::string &h,
         const int to, const std::string &uri):

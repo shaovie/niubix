@@ -18,12 +18,12 @@ class connector;
 class ev_handler; 
 class task_in_worker;
 
-class worker_wakeup : public ev_handler { 
+class worker_wakeup final : public ev_handler { 
 public:
     worker_wakeup(worker *w);
 
     int open();
-    virtual bool on_read();
+    virtual bool on_read() final;
     void wake();
 
     bool waked = false;

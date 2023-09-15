@@ -8,7 +8,7 @@ class app;
 class acceptor;
 class backend;
 
-class http_frontend: public frontend {
+class http_frontend final : public frontend {
 public:
     enum {
         new_ok      = 0,

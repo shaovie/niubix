@@ -7,7 +7,7 @@
 #include "socket.h"
 #include "ev_handler.h"
 
-class in_progress_connect : public ev_handler {
+class in_progress_connect final : public ev_handler {
 public:
     friend connector;
     in_progress_connect(connector *cn, ev_handler *eh) : cn(cn), eh(eh) { }

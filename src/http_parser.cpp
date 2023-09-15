@@ -1,6 +1,5 @@
 #include "http_parser.h"
 #include "defines.h"
-#include <stdio.h>
 
 // Just support METHOD /xxx?p1=x&p2=a#hash!xxx HTTP/1.0
 int http_parser::parse_request_line() {
@@ -41,7 +40,7 @@ int http_parser::parse_request_line() {
         case st_method:
             if (likely(ch != ' ')) {
                 mv += ch;
-                if (mv > 'Z' + 'Z' + 'Z' + 'Z' + 'Z' + 'Z') return HTTP_ERR_400;
+                if (mv > ('Z' + 'Z' + 'Z' + 'Z' + 'Z' + 'Z')) return HTTP_ERR_400;
                 break;
             }
             if (mv == ('G' + 'E' + 'T')) this->method = http_get;

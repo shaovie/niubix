@@ -7,7 +7,7 @@
 class worker;
 class nbx_inet_addr;
 
-class connector : public ev_handler
+class connector final : public ev_handler
 {
     friend class in_progress_connect;
 public:

@@ -21,7 +21,7 @@ public:
     ev_handler *eh = nullptr;
 };
 
-class timer_qheap : public ev_handler {
+class timer_qheap final : public ev_handler {
 public:
     timer_qheap(const int reserve);
 

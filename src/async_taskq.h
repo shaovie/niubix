@@ -7,7 +7,7 @@
 #include <mutex>
 #include <atomic>
 
-class async_taskq : public ev_handler {
+class async_taskq final : public ev_handler {
 public:
     async_taskq() = delete;
     ~async_taskq();
@@ -18,7 +18,7 @@ public:
     }
     int open();
 
-    virtual bool on_read();
+    virtual bool on_read() final;
 
     void push(const task_in_worker &t);
 private:

@@ -11,9 +11,10 @@ public:
         eof             = 9003,
     };
     http_parser() = default;
-    inline void reset(const char *buf, const int len) {
-        this->start = buf;
-        this->end = buf + len;
+    http_parser(const char *start, const char *end): start(start), end(end) { }
+    inline void reset(const char *start, const char *end) {
+        this->start = start;
+        this->end = end;
     }
 
     // If parsing fails, a status code will be returned, otherwise 0 will be returned
@@ -22,21 +23,23 @@ public:
     // 0;
     int parse_header_line();
 public:
-    char http_major = 0;
-    char http_minor = 0;
-    char method = http_unknown;
-    const char *start = nullptr;
-    const char *end = nullptr;
-    const char *req_start = nullptr; // request line
-    const char *req_end = nullptr; // request line
-    const char *uri_start = nullptr;
-    const char *uri_end = nullptr;
+    char http_major                 = 0;
+    char http_minor                 = 0;
+    char method                     = http_unknown;
 
-    const char *header_name_start = nullptr;
-    const char *header_name_end = nullptr;
-    const char *header_start = nullptr;
-    const char *header_end = nullptr;
-    const char *value_start = nullptr;
-    const char *value_end = nullptr;
+    const char *start               = nullptr;
+    const char *end                 = nullptr;
+
+    const char *req_start           = nullptr; // request line
+    const char *req_end             = nullptr; // request line
+    const char *uri_start           = nullptr;
+    const char *uri_end             = nullptr;
+
+    const char *header_name_start   = nullptr;
+    const char *header_name_end     = nullptr;
+    const char *header_start        = nullptr;
+    const char *header_end          = nullptr;
+    const char *value_start         = nullptr;
+    const char *value_end           = nullptr;
 };
 #endif // NBX_HTTP_PARSER_H_

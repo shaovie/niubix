@@ -10,7 +10,7 @@ class conf;
 class worker;
 struct sockaddr;
 
-class acceptor : public ev_handler {
+class acceptor final : public ev_handler {
 public:
     typedef ev_handler* (*new_conn_func_t)();
 

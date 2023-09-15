@@ -37,6 +37,7 @@
                                          health_check.cpp \
                                          http.cpp \
                                          http_frontend.cpp \
+                                         http_frontend_handle_req.cpp \
                                          http_parser.cpp \
                                          io_handle.cpp \
                                          leader.cpp \
