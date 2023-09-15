@@ -29,14 +29,14 @@
                                          acceptor.cpp \
                                          app.cpp \
                                          async_taskq.cpp \
-                                         backend_conn.cpp \
+                                         backend.cpp \
                                          conf.cpp \
                                          connector.cpp \
                                          evpoll.cpp \
                                          global.cpp \
                                          health_check.cpp \
                                          http.cpp \
-                                         http_conn.cpp \
+                                         http_frontend.cpp \
                                          http_parser.cpp \
                                          io_handle.cpp \
                                          leader.cpp \

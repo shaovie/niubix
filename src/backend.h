@@ -1,13 +1,13 @@
-#ifndef NBX_BACKEND_CONN_H_
-#define NBX_BACKEND_CONN_H_
+#ifndef NBX_BACKEND_H_
+#define NBX_BACKEND_H_
 
 #include "io_handle.h"
 
 // Forward declarations
 class app;
-class frontend_conn;
+class frontend;
 
-class backend_conn: public io_handle {
+class backend : public io_handle {
 public:
     enum {
         new_ok      = 0,
@@ -16,11 +16,11 @@ public:
         active_ok   = 3, // add ev to poll
         closed      = 4, // add ev to poll
     };
-    backend_conn(worker *w, frontend_conn *f, app *ap):
+    backend(worker *w, frontend *f, app *ap):
         matched_app(ap),
-        frontend(f)
+        frontend_conn(f)
     { this->set_worker(w); }
-    virtual ~backend_conn();
+    virtual ~backend();
 
     virtual bool on_open();
 
@@ -35,7 +35,7 @@ public:
 private:
     char state = 0;
     app *matched_app = nullptr;
-    frontend_conn *frontend = nullptr;
+    frontend *frontend_conn = nullptr;
 };
 
-#endif // NBX_BACKEND_CONN_H_
+#endif // NBX_BACKEND_H_

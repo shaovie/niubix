@@ -4,7 +4,7 @@
 #include "worker.h"
 #include "leader.h"
 #include "acceptor.h"
-#include "http_conn.h"
+#include "http_frontend.h"
 #include "inet_addr.h"
 #include "health_check.h"
 
@@ -200,7 +200,7 @@ int app::run_all(const ::conf *cf) {
             acceptor *acc = nullptr;
             worker *wrker = &(workers[i]);
             if (kv.second == app::http_protocol)
-                acc = new acceptor(wrker, http_conn::new_conn_func);
+                acc = new acceptor(wrker, http_frontend::new_conn_func);
             if (acc == nullptr) {
                 log::error("invalid protocol %d", kv.second);
                 return -1;

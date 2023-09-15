@@ -1,7 +1,7 @@
 #include "task_in_worker.h"
 #include "ev_handler.h"
-#include "frontend_conn.h"
-#include "backend_conn.h"
+#include "frontend.h"
+#include "backend.h"
 #include "acceptor.h"
 #include "log.h"
 
@@ -19,16 +19,16 @@ void task_in_worker::do_task(const task_in_worker &t) {
             delete (ev_handler *)t.p;
             break;
         case task_in_worker::backend_conn_ok:
-            ((frontend_conn *)t.p)->on_backend_connect_ok();
+            ((frontend *)t.p)->on_backend_connect_ok();
             break;
         case task_in_worker::backend_conn_fail:
-            ((frontend_conn *)t.p)->on_backend_connect_fail();
+            ((frontend *)t.p)->on_backend_connect_fail();
             break;
         case task_in_worker::backend_close:
-            ((frontend_conn *)t.p)->on_backend_close();
+            ((frontend *)t.p)->on_backend_close();
             break;
         case task_in_worker::frontend_close:
-            ((backend_conn *)t.p)->on_frontend_close();
+            ((backend *)t.p)->on_frontend_close();
             break;
         case task_in_worker::close_acceptor:
             ((acceptor *)t.p)->on_close();

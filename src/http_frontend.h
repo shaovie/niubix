@@ -1,14 +1,14 @@
-#ifndef NBX_HTTP_CONN_H_
-#define NBX_HTTP_CONN_H_
+#ifndef NBX_HTTP_FRONTEND_H_
+#define NBX_HTTP_FRONTEND_H_
 
-#include "frontend_conn.h"
+#include "frontend.h"
 
 // Forward declarations
 class app;
 class acceptor;
-class backend_conn;
+class backend;
 
-class http_conn: public frontend_conn {
+class http_frontend: public frontend {
 public:
     enum {
         new_ok      = 0,
@@ -16,9 +16,9 @@ public:
         active_ok   = 2, // add ev to poll
         closed      = 3, // add ev to poll
     };
-    http_conn() = default;
-    virtual ~http_conn();
-    static ev_handler *new_conn_func() { return new http_conn(); }
+    http_frontend() = default;
+    virtual ~http_frontend();
+    static ev_handler *new_conn_func() { return new http_frontend(); }
 
     virtual void set_acceptor(acceptor *a) { this->acc = a; };
     virtual void set_remote_addr(const struct sockaddr * /*addr*/, const socklen_t /*socklen*/);
@@ -57,10 +57,10 @@ private:
     struct sockaddr *sockaddr = nullptr;
     acceptor *acc = nullptr;
     app *matched_app = nullptr;
-    backend_conn *backend = nullptr;
+    backend *backend_conn = nullptr;
     char *local_addr = nullptr;
     char *remote_addr = nullptr;
     char *partial_buf = nullptr;
 };
 
-#endif // NBX_HTTP_CONN_H_
+#endif // NBX_HTTP_FRONTEND_H_
