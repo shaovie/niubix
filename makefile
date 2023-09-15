@@ -35,6 +35,7 @@
                                          evpoll.cpp \
                                          global.cpp \
                                          health_check.cpp \
+                                         http.cpp \
                                          http_conn.cpp \
                                          http_parser.cpp \
                                          io_handle.cpp \

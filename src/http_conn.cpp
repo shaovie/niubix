@@ -8,6 +8,8 @@
 #include "connector.h"
 #include "defines.h"
 #include "inet_addr.h"
+#include "http.h"
+#include "http_parser.h"
 
 #include <random>
 #include <cstring>
@@ -176,6 +178,102 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
         rbuf = this->partial_buf;
         rlen = this->partial_buf_len;
     }
+    http_parser parser;
+    parser.reset(rbuf, rlen);
+    int ret = 0;
+    int left_len = rlen;
+    int request_line_len = 0;
+    do {
+        ret = parser.parse_request_line();
+        if (ret > 0) {
+            const char *sbf = http::err_msgs[ret];
+            this->send(sbf, ::strlen(sbf));
+            return false;
+        } else if (ret == -1) { // partial
+            if (parser.start - parser.req_start > MAX_URI_LEN) {
+                const char *sbf = http::err_msgs[HTTP_ERR_400];
+                this->send(sbf, ::strlen(sbf));
+                return false;
+            }
+            if (this->partial_buf_len == 0) {
+                left_len = rlen - (parser.req_start - rbuf);
+                this->partial_buf = (char*)::malloc(left_len);
+                ::memcpy(this->partial_buf, parser.req_start, left_len);
+                this->partial_buf_len = left_len;
+            }
+            return true;
+        }
+        request_line_len = parser.start - parser.req_start;
+        bool has_x_real_ip = false;
+        const char *xff_start = nullptr;
+        int xff_len = 0;
+        do {
+            ret = parser.parse_header_line();
+            if (ret == 0) {
+                char ch = *(parser.header_name_start);
+                if (LOWER(ch) == 'x') {
+                    if (this->matched_app->cf->with_x_real_ip
+                        && !has_x_real_ip
+                        && (parser.header_name_end - parser.header_name_start)
+                            == (int)sizeof("X-Real-IP") - 1
+                        && ::strncasecmp(parser.header_name_start, "X-Real-IP",
+                            sizeof("X-Real-IP") - 1) == 0) {
+                        has_x_real_ip = true;
+                    } else if (this->matched_app->cf->with_x_forwarded_for
+                        && (parser.header_name_end - parser.header_name_start)
+                        == (int)sizeof("X-Forwarded-For") - 1
+                        && ::strncasecmp(parser.header_name_start, "X-Forwarded-For",
+                            sizeof("X-Forwarded-For") - 1) == 0) {
+                        xff_start = parser.header_name_start;
+                        xff_len = parser.value_end - parser.header_name_start;
+                    }
+                }
+            } else if (ret > 0) {
+                const char *sbf = http::err_msgs[ret];
+                this->send(sbf, ::strlen(sbf));
+                return false;
+            } else if (ret == -1) {
+                if (parser.start - parser.req_start > MAX_FULL_REQ_LEN) {
+                    const char *sbf = http::err_msgs[HTTP_ERR_400];
+                    this->send(sbf, ::strlen(sbf));
+                    return false;
+                }
+                if (this->partial_buf_len == 0) {
+                    left_len = rlen - (parser.req_start - rbuf);
+                    this->partial_buf = (char*)::malloc(left_len);
+                    ::memcpy(this->partial_buf, parser.req_start, left_len);
+                    this->partial_buf_len = left_len;
+                }
+                return true;
+            } else if (ret == -2) {
+                this->a_complete_request(parser.req_start,
+                    parser.start - parser.req_start, request_line_len,
+                    has_x_real_ip, xff_start, xff_len);
+                break;
+            }
+        } while (true);
+        if (parser.start >= rbuf + rlen)
+            break;
+        parser.reset(parser.start, rlen - (parser.start - rbuf));
+    } while (true);
+    return true;
+}
+bool http_conn::handle_request2(const char *rbuf, int rlen) {
+    if (!this->matched_app->cf->with_x_real_ip
+        && !this->matched_app->cf->with_x_forwarded_for) {
+        this->backend->send(rbuf, rlen);
+        return true;
+    }
+    if (this->partial_buf_len > 0) {
+        char *tbuf = (char*)::malloc(this->partial_buf_len + rlen);
+        ::memcpy(tbuf, this->partial_buf, this->partial_buf_len);
+        ::memcpy(tbuf + this->partial_buf_len, rbuf, rlen);
+        ::free(this->partial_buf);
+        this->partial_buf = tbuf;
+        this->partial_buf_len += rlen;
+        rbuf = this->partial_buf;
+        rlen = this->partial_buf_len;
+    }
     int buf_offset = 0;
     int len = rlen;
     do {
@@ -245,12 +343,12 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
             if (LOWER(*start) == 'x') {
                 if (this->matched_app->cf->with_x_real_ip
                     && !has_x_real_ip
-                    && p - start + 1 >= (int)sizeof("X-Real-IP:" - 1)
-                    && ::strncasecmp(start, "X-Real-IP:", sizeof("X-Real-IP:" - 1)) == 0) {
+                    && p - start + 1 >= (int)sizeof("X-Real-IP:") - 1
+                    && ::strncasecmp(start, "X-Real-IP:", sizeof("X-Real-IP:") - 1) == 0) {
                     has_x_real_ip = true;
                 } else if (this->matched_app->cf->with_x_forwarded_for
-                    && p - start + 1 >= (int)sizeof("X-Forwarded-For:0.0.0.0" - 1)
-                    && ::strncasecmp(start, "X-Forwarded-For:", sizeof("X-Forwarded-For:" - 1)) == 0) {
+                    && p - start + 1 >= (int)sizeof("X-Forwarded-For:0.0.0.0") - 1
+                    && ::strncasecmp(start, "X-Forwarded-For:", sizeof("X-Forwarded-For:") - 1) == 0) {
                     xff_start = start;
                     xff_len = p - 1 - start;
                 }
@@ -274,16 +372,16 @@ bool http_conn::handle_request(const char *rbuf, int rlen) {
     return true;
 }
 int http_conn::a_complete_request(const char *buf, const int len,
-    const int header_line_end,
+    const int request_line_len,
     const bool has_x_real_ip,
     const char *xff_start,
     const int xff_len) {
 
-    char hbuf[4096];
+    char hbuf[MAX_FULL_REQ_LEN];
     int copy_len = 0;
 
-    ::memcpy(hbuf, buf, header_line_end);
-    copy_len += header_line_end;
+    ::memcpy(hbuf, buf, request_line_len);
+    copy_len += request_line_len;
     if (has_x_real_ip == false && this->matched_app->cf->with_x_real_ip) {
         ::memcpy(hbuf + copy_len, "X-Real-IP: ", sizeof("X-Real-IP: ") - 1);
         copy_len += sizeof("X-Real-IP: ") - 1;
@@ -301,7 +399,7 @@ int http_conn::a_complete_request(const char *buf, const int len,
             copy_len += this->remote_addr_len;
         } else {
             ::memcpy(hbuf + copy_len, xff_start, xff_len);
-            copy_len += xff_len - 2/*CRLF*/;
+            copy_len += xff_len;
             ::memcpy(hbuf + copy_len, ", ", 2);
             copy_len += 2;
             ::memcpy(hbuf + copy_len, this->local_addr, this->local_addr_len);
@@ -312,14 +410,14 @@ int http_conn::a_complete_request(const char *buf, const int len,
     }
 
     bool copy_all = false;
-    if (len - header_line_end <= ((int)sizeof(hbuf) - copy_len)) {
-        ::memcpy(hbuf + copy_len, buf + header_line_end, len - header_line_end);
-        copy_len += len - header_line_end;
+    if (len - request_line_len <= ((int)sizeof(hbuf) - copy_len)) {
+        ::memcpy(hbuf + copy_len, buf + request_line_len, len - request_line_len);
+        copy_len += len - request_line_len;
         copy_all = true;
     }
 
     this->backend->send(hbuf, copy_len);
     if (copy_all == false)
-        this->backend->send(buf + header_line_end, len - header_line_end);
+        this->backend->send(buf + request_line_len, len - request_line_len);
     return true;
 }

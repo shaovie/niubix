@@ -1,39 +1,9 @@
-#ifndef NBX_HTTP_CONN_H_
-#define NBX_HTTP_CONN_H_
+#ifndef NBX_HTTP_PARSER_H_
+#define NBX_HTTP_PARSER_H_
 
 class http_parser {
 public:
     http_parser() = default;
-    enum {
-        st_start = 0,
-        st_method,
-        st_spaces_before_uri,
-        st_schema,              // x
-        st_schema_slash,        // x
-        st_schema_slash_slash,  // x
-        st_host_start,          // x
-        st_host,                // x
-        st_host_end,            // x
-        st_host_ip_literal,     // x
-        st_port,                // x
-        st_after_slash_in_uri,
-        st_check_uri,
-        st_uri,
-        st_spaces_before_H,
-        st_http_09,
-        st_http_H,
-        st_http_HT,
-        st_http_HTT,
-        st_http_HTTP,
-        st_first_major_digit,
-        st_after_version,
-        st_major_digit,
-        st_first_minor_digit,
-        st_minor_digit,
-        st_spaces_after_version,
-        st_almost_done,
-        st_end
-    };
     enum {
         http_v_9     = 9,
         http_v_10    = 10,
@@ -47,6 +17,8 @@ public:
         http_put     = 3,
         http_delete  = 4,
         http_head    = 5,
+
+        http_method_max_len = 6, // delete
     };
 
     void reset(const char *buf, const int len) {
@@ -54,28 +26,35 @@ public:
         this->end = buf + len;
         this->http_major = 0;
         this->http_minor = 0;
-        this->state = st_start;
+        this->state = 0;
         this->method = http_unknown;
         this->req_start = nullptr;
         this->req_end = nullptr;
-        this->method_start = nullptr;
         this->uri_start = nullptr;
         this->uri_end = nullptr;
     }
-    //
+    // If parsing fails, a status code will be returned, otherwise 0 will be returned
     int parse_request_line();
-    int parse_request_line2();
+
+    // 0;
+    int parse_header_line();
 public:
     char http_major = 0;
     char http_minor = 0;
-    char state = st_start;
+    char state = 0;
     char method = http_unknown;
     const char *start = nullptr;
     const char *end = nullptr;
-    const char *req_start = nullptr;
-    const char *req_end = nullptr;
-    const char *method_start = nullptr;
+    const char *req_start = nullptr; // request line
+    const char *req_end = nullptr; // request line
     const char *uri_start = nullptr;
     const char *uri_end = nullptr;
+
+    const char *header_name_start = nullptr;
+    const char *header_name_end = nullptr;
+    const char *header_start = nullptr;
+    const char *header_end = nullptr;
+    const char *value_start = nullptr;
+    const char *value_end = nullptr;
 };
-#endif // NBX_HTTP_CONN_H_
+#endif // NBX_HTTP_PARSER_H_

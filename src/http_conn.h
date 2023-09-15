@@ -40,6 +40,7 @@ public:
 private:
     int to_connect_backend();
     bool handle_request(const char *buf, int len);
+    bool handle_request2(const char *buf, int len);
     int a_complete_request(const char *buf, const int len,
         const int header_line_end,
         const bool has_x_real_ip,
