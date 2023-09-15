@@ -39,6 +39,7 @@ public:
     virtual void on_backend_close();
 private:
     int to_connect_backend();
+    bool response_err_and_close(const int errcode);
     bool handle_request(const char *buf, int len);
     bool handle_request2(const char *buf, int len);
     int a_complete_request(const char *buf, const int len,
