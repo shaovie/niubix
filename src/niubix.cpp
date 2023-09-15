@@ -184,6 +184,8 @@ static void master_run(conf *cf) {
             }
             if (WIFSIGNALED(status)) {
                 master_log("%s child:%d exit by signal %d\n", fmttime(), retpid, WTERMSIG(status));
+                if (retpid != g::child_pid)
+                    continue ;
                 auto now = time(nullptr);
                 if (now - exception_exit_time < 10) {
                     master_log("%s child:%d exit by signal in %ld seconds, master exit\n",
