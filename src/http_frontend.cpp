@@ -8,15 +8,12 @@
 #include "connector.h"
 #include "defines.h"
 #include "inet_addr.h"
-#include "http.h"
 #include "http_parser.h"
 
 #include <random>
 #include <cstring>
 
 http_frontend::~http_frontend() {
-    if (this->sockaddr != nullptr)
-        ::free(this->sockaddr);
     if (this->partial_buf != nullptr)
         ::free(this->partial_buf);
     if (this->local_addr != nullptr)
@@ -156,12 +153,6 @@ bool http_frontend::on_read() {
         return false;
     return true; // ret < 0
 }
-#define save_partial_buf() if (this->partial_buf_len == 0) { \
-                               this->partial_buf = (char*)::malloc(len); \
-                               ::memcpy(this->partial_buf, buf, len - buf_offset); \
-                               this->partial_buf_len = len; \
-                           }
-
 bool http_frontend::handle_request(const char *rbuf, int rlen) {
     if (!this->matched_app->cf->with_x_real_ip
         && !this->matched_app->cf->with_x_forwarded_for) {
@@ -258,6 +249,12 @@ bool http_frontend::handle_request(const char *rbuf, int rlen) {
     } while (true);
     return true;
 }
+#define save_partial_buf() if (this->partial_buf_len == 0) { \
+                               this->partial_buf = (char*)::malloc(len); \
+                               ::memcpy(this->partial_buf, buf, len - buf_offset); \
+                               this->partial_buf_len = len; \
+                           }
+
 bool http_frontend::handle_request2(const char *rbuf, int rlen) {
     if (!this->matched_app->cf->with_x_real_ip
         && !this->matched_app->cf->with_x_forwarded_for) {

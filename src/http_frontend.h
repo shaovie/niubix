@@ -54,7 +54,6 @@ private:
     int partial_buf_len = 0;
     socklen_t socklen = 0;
     int64_t start_time = 0;
-    struct sockaddr *sockaddr = nullptr;
     acceptor *acc = nullptr;
     app *matched_app = nullptr;
     backend *backend_conn = nullptr;

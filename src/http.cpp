@@ -11,6 +11,7 @@ const int http::err_codes[HTTP_ERR_SIZE] = {
     [HTTP_ERR_408] = 408,
     [HTTP_ERR_410] = 410,
     [HTTP_ERR_413] = 413,
+    [HTTP_ERR_414] = 414,
     [HTTP_ERR_421] = 421,
     [HTTP_ERR_422] = 422,
     [HTTP_ERR_425] = 425,
@@ -104,6 +105,14 @@ const char *http::err_msgs[HTTP_ERR_SIZE] = {
             "Content-Type: text/html\r\n"
             "\r\n"
             "<html><body><h1>413 Payload Too Large</h1>\nThe request entity exceeds the maximum allowed.\n</body></html>\n",
+
+    [HTTP_ERR_414] =
+        "HTTP/1.1 414 Request-URI Too Long\r\n"
+            "Content-length: 132\r\n"
+            "Cache-Control: no-cache\r\n"
+            "Content-Type: text/html\r\n"
+            "\r\n"
+            "<html><body><h1>414 Request-URI Too Long</h1>\nThe requested URL's length exceeds the capacity limit for this server.\n</body></html>\n",
 
     [HTTP_ERR_421] =
         "HTTP/1.1 421 Misdirected Request\r\n"
