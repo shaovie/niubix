@@ -21,6 +21,7 @@ const int http::err_codes[HTTP_ERR_SIZE] = {
     [HTTP_ERR_502] = 502,
     [HTTP_ERR_503] = 503,
     [HTTP_ERR_504] = 504,
+    [HTTP_ERR_505] = 505,
 };
 
 const char *http::err_msgs[HTTP_ERR_SIZE] = {
@@ -185,6 +186,14 @@ const char *http::err_msgs[HTTP_ERR_SIZE] = {
             "Content-Type: text/html\r\n"
             "\r\n"
             "<html><body><h1>504 Gateway Time-out</h1>\nThe server didn't respond in time.\n</body></html>\n",
+
+    [HTTP_ERR_505] =
+        "HTTP/1.1 505 HTTP Version Not Supported\r\n"
+            "Content-length: 67\r\n"
+            "Cache-Control: no-cache\r\n"
+            "Content-Type: text/html\r\n"
+            "\r\n"
+            "<html><body><h1>505 HTTP Version Not Supported</h1>\n</body></html>\n",
 };
 
 const char *http::get_reason(const int status) {

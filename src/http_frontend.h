@@ -7,6 +7,8 @@
 class app;
 class acceptor;
 class backend;
+class http_parser;
+class parse_req_result;
 
 class http_frontend final : public frontend {
 public:
@@ -41,12 +43,8 @@ private:
     int to_connect_backend();
     bool response_err_and_close(const int errcode);
     bool handle_request(const char *buf, int len);
-    bool handle_request2(const char *buf, int len);
-    int a_complete_request(const char *buf, const int len,
-        const int header_line_end,
-        const bool has_x_real_ip,
-        const char *xff_start,
-        const int xff_len);
+    void handle_partial_req(const http_parser &hp, const char *buf, const int rlen);
+    int a_complete_get_req(const parse_req_result &por);
 private:
     char state = 0;
     char method = 0;
@@ -55,6 +53,7 @@ private:
     int partial_buf_len = 0;
     socklen_t socklen = 0;
     int64_t start_time = 0;
+    int64_t content_length  = 0;
     acceptor *acc = nullptr;
     app *matched_app = nullptr;
     backend *backend_conn = nullptr;

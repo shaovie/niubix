@@ -28,6 +28,7 @@ enum {
     HTTP_ERR_502,
     HTTP_ERR_503,
     HTTP_ERR_504,
+    HTTP_ERR_505,
     HTTP_ERR_SIZE
 };
 enum {

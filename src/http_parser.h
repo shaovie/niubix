@@ -31,7 +31,7 @@ public:
     const char *end                 = nullptr;
 
     const char *req_start           = nullptr; // request line
-    const char *req_end             = nullptr; // request line
+    const char *req_end             = nullptr; // not containing empty lines \r\n
     const char *uri_start           = nullptr;
     const char *uri_end             = nullptr;
 
