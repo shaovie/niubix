@@ -28,6 +28,7 @@ int evpoll::add(ev_handler *eh, const int fd, const uint32_t ev) {
     
     pd->fd = fd;
     pd->eh = eh;
+    pd->events = ev;
 
     struct epoll_event epev;
     epev.events = ev;
@@ -119,7 +120,7 @@ void evpoll::run() {
                 continue;
             }
 
-            if ((ev_itor->events & (EPOLLIN)) && (pd->eh->on_read() == false)) {
+            if ((ev_itor->events & (EPOLLIN|EPOLLRDHUP)) && (pd->eh->on_read() == false)) {
                 eh = pd->eh;
                 this->remove(pd->fd, ev_handler::ev_all); // MUST before on_close
                 eh->on_close();
