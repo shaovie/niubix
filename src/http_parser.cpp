@@ -11,10 +11,10 @@ int http_parser::parse_request_line() {
         st_spaces_before_H,
         st_http_09,
         st_http_H, st_http_HT, st_http_HTT, st_http_HTTP,
-        st_first_major_digit,
+        st_first_major_digit, // 10
         st_after_version,
         st_major_digit,
-        st_first_minor_digit,
+        st_first_minor_digit, // 13
         st_minor_digit,
         st_almost_done,
         st_end
@@ -101,7 +101,7 @@ int http_parser::parse_request_line() {
             state = st_first_minor_digit;
             break;
         case st_first_minor_digit:
-            if (unlikely(ch < '1' || ch > '9')) return HTTP_ERR_400;
+            if (unlikely(ch < '0' || ch > '9')) return HTTP_ERR_400;
             this->http_minor = ch - '0';
             if (unlikely(this->http_minor > 9)) return HTTP_ERR_505;
             state = st_after_version;
@@ -185,6 +185,6 @@ int http_parser::parse_header_line() {
 
     this->start = pos + 1;
     if (state == st_end) return http_parser::parse_ok;
-    if (state == st_header_end) return http_parser::eof;
+    if (state == st_header_end) return http_parser::end_of_req;
     return http_parser::partial_req; // partial
 }

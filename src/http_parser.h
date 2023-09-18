@@ -8,7 +8,7 @@ public:
     enum {
         partial_req     = 9001,
         parse_ok        = 9002,
-        eof             = 9003,
+        end_of_req      = 9003,
     };
     http_parser() = default;
     http_parser(const char *start, const char *end): start(start), end(end) { }
