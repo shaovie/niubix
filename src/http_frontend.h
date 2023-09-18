@@ -44,7 +44,8 @@ private:
     bool response_err_and_close(const int errcode);
     bool handle_request(const char *buf, int len);
     void handle_partial_req(const http_parser &hp, const char *buf, const int rlen);
-    int a_complete_get_req(const parse_req_result &por);
+    bool filter_headers(const http_parser &parser, parse_req_result &prr);
+    int a_complete_req(const parse_req_result &por);
 private:
     char state = 0;
     char method = 0;
@@ -53,7 +54,7 @@ private:
     int partial_buf_len = 0;
     socklen_t socklen = 0;
     int64_t start_time = 0;
-    int64_t content_length  = 0;
+    uint64_t content_length  = 0;
     acceptor *acc = nullptr;
     app *matched_app = nullptr;
     backend *backend_conn = nullptr;

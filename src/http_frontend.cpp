@@ -20,7 +20,7 @@ http_frontend::~http_frontend() {
     if (this->remote_addr != nullptr)
         ::free(this->remote_addr);
 }
-void http_frontend::set_remote_addr(const struct sockaddr *addr, const socklen_t /*socklen*/) {
+void http_frontend::set_remote_addr(const struct sockaddr *addr, const socklen_t) {
     if (this->remote_addr == nullptr)
         this->remote_addr = (char *)::malloc(INET6_ADDRSTRLEN); // TODO optimize
     this->remote_addr[INET6_ADDRSTRLEN-1] = '\0';
