@@ -8,6 +8,7 @@
 int g::pid = 0;
 int g::shutdown_child_pid = 0;
 int g::child_pid = 0;
+int64_t g::worker_start_time = 0;
 worker *g::main_worker = nullptr;
 leader *g::g_leader = nullptr;
 
@@ -28,6 +29,7 @@ int g::init(const conf *cf) {
         log::error("leader open fail!");
         return -1;
     }
+    g::worker_start_time = ::time(nullptr);
     // 以上只是线程启动完成, 并没有附加事件处理
     return 0;
 }

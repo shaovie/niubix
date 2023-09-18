@@ -233,7 +233,7 @@ const char *http::get_reason(const int status) {
     case 410: return "Gone";
     case 411: return "Length Required";
     case 412: return "Precondition Failed";
-    case 413: return "Request Entity Too Large";
+    case 413: return "Request Entity Too Large"; // Content/Payload Too Large
     case 414: return "Request-URI Too Long";
     case 415: return "Unsupported Media Type";
     case 416: return "Requested range unsatisfiable";
