@@ -23,6 +23,9 @@ int leader::open(const conf *cf) {
 
         worker_cache_time *wct = new worker_cache_time(&this->workers[i]);
         this->workers[i].schedule_timer(wct, i, 48);
+
+        worker_check_frontend_active *wcfa = new worker_check_frontend_active(&this->workers[i]);
+        this->workers[i].schedule_timer(wcfa, i, 300);
     }
     return 0;
 }

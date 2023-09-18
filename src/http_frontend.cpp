@@ -19,6 +19,8 @@ http_frontend::~http_frontend() {
         ::free(this->local_addr);
     if (this->remote_addr != nullptr)
         ::free(this->remote_addr);
+    if (this->wrker != nullptr)
+        this->wrker->http_frontend_set.erase(this);
 }
 void http_frontend::set_remote_addr(const struct sockaddr *addr, const socklen_t) {
     if (this->remote_addr == nullptr)
@@ -28,6 +30,7 @@ void http_frontend::set_remote_addr(const struct sockaddr *addr, const socklen_t
         this->remote_addr_len = ::strlen(this->remote_addr);
 }
 bool http_frontend::on_open() {
+    this->wrker->http_frontend_set.insert(this);
     this->start_time = this->wrker->now_msec;
     this->state = conn_ok;
 
@@ -122,6 +125,19 @@ void http_frontend::backend_close() {
     this->wrker->push_task(task_in_worker(task_in_worker::backend_close, this));
 }
 void http_frontend::on_backend_close() {
+    if (this->state == closed)
+        return ;
+
+    this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
+    this->on_close();
+}
+void http_frontend::frontend_inactive() {
+    if (this->state != active_ok)
+        return ;
+    
+    this->wrker->push_task(task_in_worker(task_in_worker::frontend_inactive, this));
+}
+void http_frontend::on_frontend_inactive() {
     if (this->state == closed)
         return ;
 

@@ -73,9 +73,19 @@ int app::load_conf(nlohmann::json &apps) {
         cf->protocol = app::http_protocol; // TODO
         app::listen_set[cf->listen] = cf->protocol;
 
-        cf->connect_backend_timeout = itor.value("connect_backend_timeout", -1);
+        cf->connect_backend_timeout = itor.value("connect_backend_timeout", 1000);
         if (cf->connect_backend_timeout < 1) {
             fprintf(stderr, "niubix: conf - apps[%d].connect_backend_timeout is invalid!\n", i);
+            return -1;
+        }
+        cf->frontend_a_complete_req_timeout = itor.value("frontend_a_complete_req_timeout", 5000);
+        if (cf->frontend_a_complete_req_timeout < 1) {
+            fprintf(stderr, "niubix: conf - apps[%d].frontend_a_complete_req_timeout is invalid!\n", i);
+            return -1;
+        }
+        cf->frontend_idle_timeout = itor.value("frontend_idle_timeout", 10000);
+        if (cf->frontend_idle_timeout < 1) {
+            fprintf(stderr, "niubix: conf - apps[%d].frontend_idle_timeout is invalid!\n", i);
             return -1;
         }
         cf->with_x_forwarded_for = itor.value("x-forwarded-for", true);

@@ -35,6 +35,8 @@ public:
         bool with_x_real_ip = true;
         int balance_policy  = 0;
         int connect_backend_timeout = 1000; // msec
+        int frontend_a_complete_req_timeout = 5000; // msec
+        int frontend_idle_timeout = 10000; // msec
         int protocol = 0;
         int backend_protocol = 0;
         std::string name;

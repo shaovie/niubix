@@ -1,5 +1,6 @@
 #include "http_frontend.h"
 #include "socket.h"
+#include "worker.h"
 #include "app.h"
 #include "log.h"
 #include "defines.h"
@@ -32,6 +33,7 @@ public:
     const char *payload = nullptr;
 };
 bool http_frontend::handle_request(const char *rbuf, int rlen) {
+    this->recv_time = this->wrker->now_msec;
     if (this->content_length > 0) {
         int payload_len = std::min((uint64_t)rlen, this->content_length);
         this->backend_conn->send(rbuf, payload_len);
@@ -137,6 +139,7 @@ bool http_frontend::filter_headers(const http_parser &parser, parse_req_result &
     return true;
 }
 int http_frontend::a_complete_req(const parse_req_result &prr) {
+    this->a_complete_req_time = this->wrker->now_msec;
     const int extra_len = sizeof("X-Real-IP: ") - 1 + INET6_ADDRSTRLEN + 2/*CRLF*/
         + sizeof("X-Forwarded-For: ") - 1 + INET6_ADDRSTRLEN + 2;
     char hbuf[MAX_FULL_REQ_LEN + extra_len];

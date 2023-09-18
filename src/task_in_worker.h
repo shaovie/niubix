@@ -13,6 +13,7 @@ public:
         backend_close       = 4,
         frontend_close      = 5,
         close_acceptor      = 6,
+        frontend_inactive   = 7,
 
         gracefully_shutdown = 101,
     };

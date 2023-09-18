@@ -33,6 +33,9 @@ void task_in_worker::do_task(const task_in_worker &t) {
         case task_in_worker::close_acceptor:
             ((acceptor *)t.p)->on_close();
             break;
+        case task_in_worker::frontend_inactive:
+            ((frontend *)t.p)->on_frontend_inactive();
+            break;
         default:
             log::error("unknown worker task");
             break;

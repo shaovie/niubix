@@ -5,6 +5,7 @@
 #include "async_taskq.h"
 #include "timer_qheap.h"
 
+#include <set>
 #include <vector>
 #include <cstdint>
 #include <pthread.h>
@@ -17,6 +18,7 @@ class acceptor;
 class connector;
 class ev_handler; 
 class task_in_worker;
+class http_frontend;
 
 class worker_wakeup final : public ev_handler { 
 public:
@@ -105,6 +107,8 @@ public:
     std::vector<acceptor *> acceptor_list;
     pthread_t thread_id;
     std::unordered_map<int, void *> pcache;
+
+    std::set<http_frontend *> http_frontend_set;
 };
 
 #endif // NBX_WORKER_H_

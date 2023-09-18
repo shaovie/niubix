@@ -12,11 +12,12 @@ class parse_req_result;
 
 class http_frontend final : public frontend {
 public:
+    friend class worker_check_frontend_active;
     enum {
         new_ok      = 0,
         conn_ok     = 1,
         active_ok   = 2, // add ev to poll
-        closed      = 3, // add ev to poll
+        closed      = 3,
     };
     http_frontend() = default;
     virtual ~http_frontend();
@@ -39,6 +40,9 @@ public:
 
     virtual void backend_close();
     virtual void on_backend_close();
+
+    virtual void frontend_inactive();
+    virtual void on_frontend_inactive();
 private:
     int to_connect_backend();
     bool response_err_and_close(const int errcode);
@@ -53,7 +57,9 @@ private:
     char remote_addr_len = 0;
     int partial_buf_len = 0;
     socklen_t socklen = 0;
-    int64_t start_time = 0;
+    int64_t start_time = 0; //
+    int64_t recv_time = 0;  // for app.frontend_idle_timeout
+    int64_t a_complete_req_time = 0;  // for app.frontend_a_complete_req_timeout
     uint64_t content_length  = 0;
     acceptor *acc = nullptr;
     app *matched_app = nullptr;

@@ -1,4 +1,5 @@
 #include "worker_timing_event.h"
+#include "http_frontend.h"
 #include "log.h"
 #include "app.h"
 
@@ -18,5 +19,36 @@ bool worker_shutdown::on_timeout(const int64_t ) {
     
     if (tt_active_num < 1)
         ::exit(0);
+    return true;
+}
+bool worker_check_frontend_active::on_timeout(const int64_t now) {
+    for (auto f : this->wrker->http_frontend_set) {
+        if (f->state != http_frontend::active_ok)
+            continue;
+
+        // check idle
+        if (f->recv_time == 0
+            && now - f->start_time > f->matched_app->cf->frontend_idle_timeout) {
+            f->frontend_inactive();
+            continue ;
+        } else if (f->recv_time > 0
+            && now - f->recv_time > f->matched_app->cf->frontend_idle_timeout) {
+            f->frontend_inactive();
+            continue ;
+        }
+
+        // check req
+        if (f->a_complete_req_time == 0
+            && f->recv_time > 0
+            && now - f->recv_time > f->matched_app->cf->frontend_a_complete_req_timeout) {
+            f->frontend_inactive();
+            continue ;
+        } else if (f->a_complete_req_time > 0
+            && f->recv_time > f->a_complete_req_time // a new req
+            && now - f->recv_time > f->matched_app->cf->frontend_a_complete_req_timeout) {
+            f->frontend_inactive();
+            continue ;
+        }
+    }
     return true;
 }
