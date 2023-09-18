@@ -2,9 +2,9 @@
 
 Just a reverse proxy service
 
-实验性项目，NiubiX 只提供反向代理功能，大家轻拍有不好的地方可以留言或提 issue/pr.  觉得好就点个 star ，我会持续完善它
+实验性项目，NiubiX 只提供反向代理功能，持续完善中...
 
-与 Nginx/Haproxy 对比测试 QPS可以达到3倍以上  
+与 Nginx/Haproxy 对比测试 Get/Post QPS可以达到3倍以上  
 
 测试环境:
 > Linux 5.19.0-1030-gcp #32~22.04.1-Ubuntu  
@@ -145,20 +145,12 @@ Transfer/sec:      2.18MB
 ![](https://pica.zhimg.com/80/v2-d5ae358121a2c93e4544cbea1925a020_1440w.png?source=d16d100b)
 tcpdump tcp port 8080 抓包查看 niubix 实际数据，包含 X-Real-IP, XFF ，并且响应在微秒级
 
-#### 目前具备功能：
-* master/worker 模式，worker 采用多线程，支持配置优雅的 Reload(像 nginx 一样)，master 还是守护进程，当 worker 进程异常会马上 fork 一个新的
-* 只支持 Linux （将来也不准备跨平台）
-* 主体逻辑无锁，简单高效，可靠
-* 优雅的 acceptor/connector ，高效实现异步监听+连接
-
 #### 测试声明
 * niubix 仅提供反向代理功能
-* niubix 支持 X-Real-IP,  X-Forwarded-For, 其他 Header 并没有解析  
-* http parser 只是简单的解析, 并没有完全实现
+* http parser 只解析反向代理需要的header
 * 只是初步测试, 并没有做冒烟测试和稳定性测试以及多条件下复杂测试
 * niubix 均衡策略使用的是 roundrobin(别的也还没实现呢), haproxy 也是一样的策略
 * backend 测试程序[code](https://github.com/shaovie/reactor/blob/main/example/techempower.cpp)
-* niubix 不解析 response 内容
 * 功能逐步完善中, 基本框架是过硬的, 我相信这是一个好的开始
 
 ## Development Roadmap
@@ -170,5 +162,5 @@ tcpdump tcp port 8080 抓包查看 niubix 实际数据，包含 X-Real-IP, XFF �
 - [x] Fronted active check
 - [ ] Admin api
 - [ ] More balance prolicy
-- [ ] TCP protocol + Proxy Protocol
 - [ ] Https
+- [ ] TCP protocol + Proxy Protocol
