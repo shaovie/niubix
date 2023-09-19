@@ -173,8 +173,7 @@ int log::open(const char *dir, const char *filename_prefix, const char *lt) {
     int l_type = 0;
     for (token = ::strtok_r(bf, "|", &tok_p); 
          token != NULL;
-         token = ::strtok_r(NULL, ",", &tok_p))
-    {
+         token = ::strtok_r(NULL, "|", &tok_p)) {
         if (::strcmp(token, "shutdown") == 0) {
           l_type |= SHUTDOWN;
           break;
