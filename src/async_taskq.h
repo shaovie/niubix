@@ -25,7 +25,7 @@ private:
     void do_task(const task_in_worker &t);
 
     int efd = -1;
-    std::atomic<int> notified;
+    std::atomic<int> notified = {0};
     ringq<task_in_worker> *readq  = nullptr;
     ringq<task_in_worker> *writeq = nullptr;
     std::mutex taskq_mtx;
