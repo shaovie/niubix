@@ -53,6 +53,8 @@ public:
     static const int   err_codes[HTTP_ERR_SIZE];
     static const char *err_msgs[HTTP_ERR_SIZE];
     static const char *get_reason(const int status);
+
+    static int url_decode(char *str, int len);
 };
 
 #endif // NBX_HTTP_H_
