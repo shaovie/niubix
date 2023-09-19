@@ -3,6 +3,7 @@
 #include "conf.h"
 #include "ev_handler.h"
 #include "worker_timing_event.h"
+#include "log.h"
 
 #include <cerrno>
 #include <cstdio>
@@ -30,9 +31,10 @@ int leader::open(const conf *cf) {
     return 0;
 }
 void leader::gracefully_close_all() {
-    for (int i = 0; i < this->worker_num; ++i)
+    for (int i = 0; i < this->worker_num; ++i) {
         this->workers[i].push_async_task(
             task_in_worker(task_in_worker::gracefully_shutdown, nullptr));
+    }
 }
 int leader::add_ev(ev_handler *eh, const int fd, const uint32_t events) {
     if (fd < 0 || eh == nullptr || events == 0)
