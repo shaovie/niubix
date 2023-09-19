@@ -3,21 +3,39 @@
 #include "log.h"
 #include "worker.h"
 #include "leader.h"
+#include "admin.h"
+#include "acceptor.h"
 #include "worker_timing_event.h"
 
+#include <cstring>
+
+bool g::worker_shutdowning = false;
 int g::pid = 0;
 int g::shutdown_child_pid = 0;
 int g::child_pid = 0;
+int g::master_pid = 0;
 int64_t g::worker_start_time = 0;
+const conf *g::cf = nullptr;
+acceptor *g::admin_acceptor = nullptr;
 worker *g::main_worker = nullptr;
 leader *g::g_leader = nullptr;
 
 int g::init(const conf *cf) {
+    g::cf = cf;
     g::main_worker = new worker();
-    if (g::main_worker->open(nullptr, 0, cf) != 0) {
+    if (g::main_worker->open(nullptr, 0, g::cf) != 0) {
         log::error("main worker open fail!");
         return -1;
     }
+    if (::strlen(g::cf->admin_listen) > 1) {
+        g::admin_acceptor = new acceptor(g::main_worker, admin::new_admin_func);
+        // TODO use global conf ?
+        if (g::admin_acceptor->open(std::string(g::cf->admin_listen), g::cf) == -1) {
+            log::error("admin listen %s fail!", g::cf->admin_listen);
+            return -1;
+        }
+    }
+
     worker_cache_time *wct = new worker_cache_time(g::main_worker);
     g::main_worker->schedule_timer(wct, 10, 48);
 
@@ -25,7 +43,7 @@ int g::init(const conf *cf) {
     g::main_worker->schedule_timer(wso, 800, 1000);
 
     g::g_leader = new leader();
-    if (g::g_leader->open(cf) != 0) {
+    if (g::g_leader->open(g::cf) != 0) {
         log::error("leader open fail!");
         return -1;
     }
@@ -34,6 +52,8 @@ int g::init(const conf *cf) {
     return 0;
 }
 void g::let_worker_shutdown() {
+    if (g::admin_acceptor != nullptr)
+        g::admin_acceptor->close();
     g::g_leader->gracefully_close_all();
 
     // timing check

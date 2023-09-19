@@ -27,6 +27,7 @@
                             OBJECT_DIR = ./.obj/
                               CPPFILES = \
                                          acceptor.cpp \
+                                         admin.cpp \
                                          app.cpp \
                                          async_taskq.cpp \
                                          backend.cpp \

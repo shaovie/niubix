@@ -182,6 +182,18 @@ void app::backend_online(app::backend *ab) {
         ab->offline = false;
     this->backend_mtx.unlock();
 }
+bool app::set_backend_down(const std::string &host, const bool st) {
+    this->backend_mtx.lock();
+    for (auto bp : this->cf->backend_list) {
+        if (bp->host == host) {
+            bp->down = st;
+            this->backend_mtx.unlock();
+            return true;
+        }
+    }
+    this->backend_mtx.unlock();
+    return false;
+}
 // https://github.com/phusion/nginx/commit/27e94984486058d73157038f7950a0a36ecc6e35
 // refer: https://tenfy.cn/2018/11/12/smooth-weighted-round-robin/
 app::backend* app::get_backend_by_smooth_wrr() {

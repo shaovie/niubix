@@ -3,6 +3,9 @@
 
 #include "defines.h"
 
+#include <set>
+#include <string>
+
 class conf {
 public:
     conf() = default;
@@ -22,6 +25,8 @@ public:
     char log_dir[MAX_FILE_NAME_LENGTH] = {0};
     char log_level[MAX_FILE_NAME_LENGTH] = {0};
     char master_log[MAX_FILE_NAME_LENGTH] = {0};
+    char admin_listen[MAX_FILE_NAME_LENGTH] = {0};
+    std::set<std::string> admin_ip_white_set;
 };
 
 #endif // NBX_CONF_H_

@@ -9,12 +9,13 @@
     "log_dir": "logs", // log info of worker at runtime
     "log_level": "all", // support `debug|info|warn|error|all|shutdown`, e.g. debug|warn,
 
-    // TODO admin api or web
-    "listen_admin": ":9527",
+    // admin http api
+    "admin_listen": ":9527", // optional
+    "admin_ip_white_list": "127.0.0.1", // optional, empty represents that all IPs are accessible.
 
     "apps": [
         {
-            "name": "test", // must, unique
+            "name": "test", // must, unique, english characters.
             "listen": ":8081", // surpport :8080 or 192.168.1.101:8080 or []:8080
             "?listen": "[]:8080 represents ipv6 + ipv4 bind port 8080",
 

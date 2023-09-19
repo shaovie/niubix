@@ -68,6 +68,24 @@ int conf::load(const char *path) {
         return -1;
     }
 
+    ::strncpy(this->admin_listen, js.value("admin_listen", "").c_str(), sizeof(this->admin_listen) - 1);
+    this->admin_listen[sizeof(this->admin_listen) - 1] = '\0';
+
+    const std::string &ips = js.value("admin_ip_white_list", "");
+    if (ips.length() > 0) {
+        char *tok_p = NULL;
+        char *token = NULL;
+        char *bf = (char *)::malloc(ips.length() + 1);
+        ::strncpy(bf, ips.c_str(), ips.length());
+        bf[ips.length()] = '\0';
+        for (token = ::strtok_r(bf, ",", &tok_p); 
+            token != NULL;
+            token = ::strtok_r(NULL, ",", &tok_p)) {
+            this->admin_ip_white_set.insert(std::string(token));
+        }
+        ::free(bf);
+    }
+
     nlohmann::json &apps = js["apps"];
     if (apps.empty() || !apps.is_array()) {
         fprintf(stderr, "niubix: conf - apps is empty!\n");

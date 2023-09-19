@@ -1,5 +1,5 @@
-#ifndef NBX_ROUTER_H_
-#define NBX_ROUTER_H_
+#ifndef NBX_APP_H_
+#define NBX_APP_H_
 
 #include "nlohmann/json_fwd.hpp"
 
@@ -63,6 +63,7 @@ public:
 
     void backend_online(backend *);
     void backend_offline(backend *);
+    bool set_backend_down(const std::string &host, const bool st);
 
     // smooth weighted round-robin balancing
     backend *get_backend_by_smooth_wrr();
@@ -85,4 +86,4 @@ public:
     static std::vector<app *> alls;
 };
 
-#endif // NBX_ROUTER_H_
+#endif // NBX_APP_H_
