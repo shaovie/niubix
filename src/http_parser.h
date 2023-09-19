@@ -19,6 +19,7 @@ public:
 
     // If parsing fails, a status code will be returned, otherwise 0 will be returned
     int parse_request_line();
+    int parse_uri(const char *&path_end, const char *&query_start, const char *&query_end);
 
     // 0;
     int parse_header_line();

@@ -120,6 +120,52 @@ int http_parser::parse_request_line() {
     this->start = pos + 1;
     return state == st_end ? http_parser::parse_ok : http_parser::partial_req;
 }
+int http_parser::parse_uri(const char *&path_end, const char *&query_start,
+    const char *&query_end) {
+    enum {
+        st_start = 0, // MUST 0
+        st_path,
+        st_query,
+        st_check_fragment,
+        st_end
+    };
+    char ch = 0;
+    const char *pos = nullptr;
+    int state = st_start;
+    path_end = nullptr;
+    query_start = nullptr;
+
+    for (pos = this->uri_start; pos < this->uri_end; ++pos) {
+        ch = *pos;
+        switch (state) {
+        case st_start:
+            if (unlikely(ch != '/')) { return HTTP_ERR_400; }
+            state = st_path;
+            break;
+        case st_path:
+            if (ch != '?') break;
+            path_end = pos;
+            state = st_query;
+            break;
+        case st_query:
+            if (ch == '#') { state = st_end; break; }
+            query_start = pos;
+            state = st_check_fragment;
+            break;
+        case st_check_fragment:
+            if (ch == '#') {
+                query_end = pos;
+                state = st_end;
+            }
+            break;
+        }
+        if (state == st_end)
+            break;
+    }
+    if (query_start != nullptr && query_end == nullptr)
+        query_end = pos + 1;
+    return 0;
+}
 int http_parser::parse_header_line() {
     enum {
         st_start = 0, // MUST 0
@@ -127,7 +173,6 @@ int http_parser::parse_header_line() {
         st_space_before_value,
         st_value,
         st_space_after_value,
-        st_ignore_line,
         st_almost_done,
         st_header_almost_done,
         st_header_end,
