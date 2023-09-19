@@ -1,5 +1,6 @@
 #include "worker_timing_event.h"
 #include "http_frontend.h"
+#include "global.h"
 #include "log.h"
 #include "app.h"
 
@@ -17,8 +18,10 @@ bool worker_shutdown::on_timeout(const int64_t ) {
     for (auto ap : app::alls)
         tt_active_num += ap->frontend_active_n.load();
     
-    if (tt_active_num < 1)
+    if (tt_active_num < 1) {
+        log::info("worker:%d gracefully exit", g::pid);
         ::exit(0);
+    }
     return true;
 }
 bool worker_check_frontend_active::on_timeout(const int64_t now) {
