@@ -154,6 +154,8 @@ int admin::a_complete_req(const http_parser &parser) {
     
     if (::strncmp(uri_buf, "/set_backend_down", path_end - uri_buf) == 0)
         this->set_backend_down(query_start, query_end);
+    else if (::strncmp(uri_buf, "/set_backend_weight", path_end - uri_buf) == 0)
+        this->set_backend_weight(query_start, query_end);
     else if (::strncmp(uri_buf, "/shutdown", path_end - uri_buf) == 0)
         this->shutdown();
     else if (::strncmp(uri_buf, "/reload", path_end - uri_buf) == 0)
@@ -187,6 +189,37 @@ void admin::set_backend_down(const char *query_start, const char *query_end) {
     resp["name"] = name;
     resp["host"] = host;
     resp["down"] = down;
+    if (set_ok != true) {
+        resp["code"] = 404;
+        resp["msg"] = "not found";
+    }
+    this->response_json(resp.dump());
+}
+void admin::set_backend_weight(const char *query_start, const char *query_end) {
+    std::map<std::string, std::string> params;
+    parse_query_params(params, query_start, query_end - query_start);
+
+    const auto &name = params["name"];
+    const auto &host = params["host"];
+    const auto &weight = params["weight"];
+    int weight_v = std::stoi(weight);
+    if (name.empty() || host.empty() || weight_v < 0) {
+        this->response_error(http::err_codes[HTTP_ERR_400], "param invalid");
+        return ;
+    }
+    bool set_ok = false;
+    for (auto &ap : app::alls) {
+        if (ap->cf->name == name) {
+            set_ok = ap->set_backend_weight(host, weight_v);
+            break;
+        }
+    }
+    nlohmann::json resp;
+    resp["code"] = 0;
+    resp["msg"] = "ok";
+    resp["name"] = name;
+    resp["host"] = host;
+    resp["weight"] = weight_v;
     if (set_ok != true) {
         resp["code"] = 404;
         resp["msg"] = "not found";

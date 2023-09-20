@@ -46,8 +46,8 @@
                     // go offline after one failure, and resume online after three consecutive successes
                     // Hot update not supported
 
-                    "down": false, // optional default false, TODO hot update
-                    "weight": 5, // optional, >=0, default 1, 0 will skip this one, for roundrobin 
+                    "down": false, // optional default false, hot update supported
+                    "weight": 5, // optional, >=0, default 1, 0 will skip this one, for roundrobin, hot update supported
                     "host": "10.146.0.3:8080" // ip+port"
                 }
             ]

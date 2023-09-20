@@ -25,6 +25,7 @@ private:
     void shutdown();
     void reload();
     void set_backend_down(const char *query_start, const char *query_end);
+    void set_backend_weight(const char *query_start, const char *query_end);
 private:
     bool handle_request(const char *rbuf, int rlen);
     void response_error(const int code, const char *msg);

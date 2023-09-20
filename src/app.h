@@ -64,6 +64,7 @@ public:
     void backend_online(backend *);
     void backend_offline(backend *);
     bool set_backend_down(const std::string &host, const bool st);
+    bool set_backend_weight(const std::string &host, const int weight);
 
     // smooth weighted round-robin balancing
     backend *get_backend_by_smooth_wrr();
