@@ -2,7 +2,7 @@
 
 Just a reverse proxy service
 
-实验性项目，NiubiX 只提供反向代理功能，持续完善中...
+实验性项目，NiubiX 只提供反向代理功能，持续完善中... (如有疑问可微信联系: shaoviea)
 
 与 Nginx/Haproxy 对比测试 Get/Post QPS可以达到3倍以上  
 
