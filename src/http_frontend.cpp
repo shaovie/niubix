@@ -185,9 +185,9 @@ void http_frontend::on_close() { // maybe trigger EPOLLHUP | EPOLLERR
         this->backend_conn->frontend_close();
         this->backend_conn = nullptr; // 解除关系
     }
-    this->wrker->push_task(task_in_worker(task_in_worker::del_ev_handler, this));
-    this->destroy();
     this->state = closed;
+    this->destroy();
+    delete this;
 }
 bool http_frontend::on_read() {
     char *buf = nullptr;
