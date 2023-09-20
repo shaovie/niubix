@@ -161,6 +161,7 @@ tcpdump tcp port 8080 抓包查看 niubix 实际数据，包含 X-Real-IP, XFF �
 - [x] GET/POST/DELETE/PUT/HEAD/ support
 - [x] Fronted active check
 - [x] Admin api
+- [x] Match app by host
 - [ ] Transfer-Encoding: chunked
 - [ ] More balance prolicy
 - [ ] Https
