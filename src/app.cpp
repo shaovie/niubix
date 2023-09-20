@@ -18,9 +18,10 @@ std::unordered_map<std::string/*listen*/, int/*protocol*/> app::listen_set;
 std::vector<app *> app::alls;
 
 int app::load_conf(nlohmann::json &apps) {
-    std::set<std::string/*protocol:port*/> protocol_port_set;
     std::set<std::string/*host*/> app_host_set;
     std::set<std::string/*name*/> app_name_set;
+    std::set<int/*port*/> default_app_set;
+    std::map<int/*port*/, std::string> port_bind_protocol_map;
     int i = 0;
     for (auto itor : apps) {
         i = app::alls.size();
@@ -43,14 +44,40 @@ int app::load_conf(nlohmann::json &apps) {
             fprintf(stderr, "niubix: conf - apps[%d].listen is invalid!\n", i);
             return -1;
         }
-        cf->http_host = itor.value("http_host", "");
-        if (cf->http_host.length() == 0) {
-            fprintf(stderr, "niubix: conf - apps[%d].host is empty!\n", i);
+
+        std::string protocol = itor.value("protocol", "");
+        if (protocol.length() == 0 || protocol != "http") {
+            fprintf(stderr, "niubix: conf - apps[%d].protocol is invalid!\n", i);
             return -1;
         }
-        if (app_host_set.count(cf->http_host) == 1) {
-            fprintf(stderr, "niubix: conf - apps[%d].host is duplicate!\n", i);
+        if (port_bind_protocol_map[port] == protocol) {
+            fprintf(stderr, "niubix: conf - apps[%d].listen one port can't bind diffrent protocols!\n", i);
             return -1;
+        }
+        port_bind_protocol_map[port] = protocol; // 1个端口只能绑定一种协议
+        cf->protocol = app::http_protocol; // TODO
+        app::listen_set[cf->listen] = cf->protocol;
+
+
+        if (cf->protocol == app::http_protocol) {
+            cf->http_host = itor.value("http_host", "");
+            if (cf->http_host.length() == 0) {
+                fprintf(stderr, "niubix: conf - apps[%d].http_host is empty!\n", i);
+                return -1;
+            }
+            if (cf->http_host == "default") {
+                if (default_app_set.count(port) == 1) {
+                    fprintf(stderr, "niubix: conf - apps[%d].http_host err, a default exist!\n", i);
+                    return -1;
+                }
+                cf->http_host = "";
+                cf->is_default = true;
+                default_app_set.insert(port);
+            }
+            if (app_host_set.count(cf->http_host) == 1) {
+                fprintf(stderr, "niubix: conf - apps[%d].http_host is duplicate!\n", i);
+                return -1;
+            }
         }
 
         cf->balance_policy = app::parse_balance_policy(itor.value("balance_policy", ""));
@@ -58,20 +85,6 @@ int app::load_conf(nlohmann::json &apps) {
             fprintf(stderr, "niubix: conf - apps[%d].balance_policy is invalid!\n", i);
             return -1;
         }
-
-        std::string protocol = itor.value("protocol", "");
-        if (protocol.length() == 0 || protocol != "http") {
-            fprintf(stderr, "niubix: conf - apps[%d].protocol is invalid!\n", i);
-            return -1;
-        }
-        std::string protocol_port = protocol + ":" + std::to_string(port);
-        if (protocol_port_set.count(protocol_port) == 1) {
-            fprintf(stderr, "niubix: conf - apps[%d].listen + protocol is duplicate!\n", i);
-            return -1;
-        }
-        protocol_port_set.insert(protocol_port); // 相同协议+端口 不能重复
-        cf->protocol = app::http_protocol; // TODO
-        app::listen_set[cf->listen] = cf->protocol;
 
         cf->connect_backend_timeout = itor.value("connect_backend_timeout", 1000);
         if (cf->connect_backend_timeout < 1) {
@@ -205,6 +218,16 @@ bool app::set_backend_weight(const std::string &host, const int weight) {
     }
     this->backend_mtx.unlock();
     return false;
+}
+app *app::match_app_by_host(const char *host) {
+    app *default_one = nullptr;
+    for (auto ap : app::alls) {
+        if (::strcasecmp(ap->cf->http_host.c_str(), host) == 0)
+            return ap;
+        if (default_one == nullptr && ap->cf->is_default == true)
+            default_one = ap;
+    }
+    return default_one;
 }
 // https://github.com/phusion/nginx/commit/27e94984486058d73157038f7950a0a36ecc6e35
 // refer: https://tenfy.cn/2018/11/12/smooth-weighted-round-robin/

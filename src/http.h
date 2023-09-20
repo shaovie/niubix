@@ -5,6 +5,7 @@
 #define MAX_URI_LEN         2048
 #define MAX_EXTRA_CRLFS     16  // "\r\n" = 2
 #define MAX_EXTRA_SPACES    8
+#define MAX_HOST_LEN        255
 
 /* All implemented HTTP status codes */
 enum {
@@ -17,6 +18,7 @@ enum {
     HTTP_ERR_407,
     HTTP_ERR_408,
     HTTP_ERR_410,
+    HTTP_ERR_411,
     HTTP_ERR_413,
     HTTP_ERR_414,
     HTTP_ERR_421,
@@ -33,9 +35,9 @@ enum {
 };
 enum {
     http_v_9     = 9,
-    http_v_10    = 10,
-    http_v_11    = 11,
-    http_v_20    = 20,
+    http_v_10    = 100,
+    http_v_11    = 101,
+    http_v_20    = 200,
 };
 enum {
     http_unknown = 0,

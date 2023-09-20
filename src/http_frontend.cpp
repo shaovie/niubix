@@ -19,6 +19,11 @@ http_frontend::~http_frontend() {
         ::free(this->local_addr);
     if (this->remote_addr != nullptr)
         ::free(this->remote_addr);
+    if (this->host != nullptr)
+        ::free(this->host);
+    if (this->received_data_before_match_app != nullptr)
+        ::free(this->received_data_before_match_app);
+
     if (this->wrker != nullptr)
         this->wrker->http_frontend_set.erase(this);
 }
@@ -48,19 +53,39 @@ bool http_frontend::on_open() {
         log::info("new conn not match app by local port%d", this->acc->port);
         return this->response_err_and_close(HTTP_ERR_503);
     }
+    //
+    socket::set_nodelay(this->get_fd());
     auto vp = app_l->second;
     if (vp->size() == 1) { // 该端口只绑定了一个app, 立即准备连接后端
         this->matched_app = vp->front();
         if (this->to_connect_backend() != 0)
             return this->response_err_and_close(HTTP_ERR_503);
+    } else {
+        // 匹配失败, 等接受完第一个消息后通过Host匹配, 具体流程:
+        // 1. 读取第一波数据
+        // 2. 解析数据, 并缓存起来
+        // 3. 暂停接受新数据, 根据Host匹配app, 并发起链接
+        // 4. 处理连接结果...
+        if (this->wrker->add_ev(this, this->get_fd(), ev_handler::ev_read) != 0) {
+            log::error("new http_frontend add to poller fail! %s", strerror(errno));
+            this->response_err_and_close(HTTP_ERR_500);
+            return false;
+        }
     }
     return true;
+}
+void http_frontend::to_match_app_by_host() {
+    this->matched_app = app::match_app_by_host(this->host);
+    if (this->matched_app == nullptr || this->to_connect_backend() != 0) {
+        this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
+        this->on_close();
+    }
 }
 int http_frontend::to_connect_backend() {
     this->matched_app->accepted_num.fetch_add(1, std::memory_order_relaxed);
     app::backend *ab = nullptr;
     if (this->matched_app->cf->balance_policy == app::roundrobin)
-        ab = this->matched_app->get_backend_by_smooth_wrr(); // no need to check for nullptr
+        ab = this->matched_app->get_backend_by_smooth_wrr();
     if (ab == nullptr)
         return -1;
     
@@ -90,11 +115,18 @@ void http_frontend::backend_connect_ok() {
 void http_frontend::on_backend_connect_ok() {
     if (this->backend_conn == nullptr)
         return ; // 如果早就解除关系了, 就忽略它的事件
-    int fd = this->get_fd();
-    if (fd == -1)
-        return ;
-    socket::set_nodelay(fd);
-    if (this->wrker->add_ev(this, fd, ev_handler::ev_read) != 0) {
+    if (this->received_data_len_before_match_app > 0) { // 先将#11缓存的数据flush掉
+        bool ret = this->handle_request(this->received_data_before_match_app,
+            this->received_data_len_before_match_app);
+        ::free(this->received_data_before_match_app);
+        this->received_data_len_before_match_app = 0;
+        this->received_data_before_match_app = nullptr;
+        if (ret != true) {
+            this->on_close();
+            return ;
+        }
+    }
+    if (this->wrker->add_ev(this, this->get_fd(), ev_handler::ev_read) != 0) {
         log::error("new http_frontend add to poller fail! %s", strerror(errno));
         this->response_err_and_close(HTTP_ERR_500);
         this->on_close();
@@ -158,16 +190,41 @@ void http_frontend::on_close() { // maybe trigger EPOLLHUP | EPOLLERR
     this->state = closed;
 }
 bool http_frontend::on_read() {
-    if (unlikely(this->backend_conn == nullptr))
-        return false;
-
     char *buf = nullptr;
     int ret = this->recv(buf);
     if (likely(ret > 0))
-        return this->handle_request(buf, ret);
+        return this->handle_data(buf, ret);
     if (ret == 0) // closed
         return false;
     return true; // ret < 0
+}
+void http_frontend::forward_to_backend(const char *buf, const int len) {
+    if (this->backend_conn != nullptr) {
+        this->backend_conn->send(buf, len);
+        return ;
+    }
+}
+void http_frontend::save_received_data_before_match_app(const char *buf, const int len) {
+    if (this->matched_app != nullptr)
+         return ;
+
+    // 如果没有匹配到后端, 先将数据保存起来 #11
+    int bf_len = len;
+    int copy_len = 0;
+    char *bf = nullptr;
+    if (this->received_data_len_before_match_app > 0) {
+        bf_len += this->received_data_len_before_match_app;
+        bf = (char *)::malloc(bf_len);
+        ::memcpy(bf, this->received_data_before_match_app,
+            this->received_data_len_before_match_app);
+        copy_len += this->received_data_len_before_match_app;
+        ::free(this->received_data_before_match_app);
+    } else {
+        bf = (char *)::malloc(bf_len);
+    }
+    ::memcpy(bf + copy_len, buf, len);
+    this->received_data_before_match_app = bf;
+    this->received_data_len_before_match_app = bf_len;
 }
 bool http_frontend::response_err_and_close(const int errcode) {
     const char *sbf = http::err_msgs[errcode];

@@ -12,7 +12,6 @@ int http_parser::parse_request_line() {
         st_http_09,
         st_http_H, st_http_HT, st_http_HTT, st_http_HTTP,
         st_first_major_digit, // 10
-        st_after_version,
         st_major_digit,
         st_first_minor_digit, // 13
         st_minor_digit,
@@ -93,22 +92,24 @@ int http_parser::parse_request_line() {
         case st_first_major_digit:
             if (unlikely(ch < '1' || ch > '9')) return HTTP_ERR_400;
             this->http_major = ch - '0';
-            if (unlikely(this->http_major > 1)) return HTTP_ERR_505;
+            if (unlikely(this->http_major > 2)) return HTTP_ERR_505;
             state = st_major_digit;
             break;
-        case st_major_digit: // 只支持 1.0 1.1  1位版本号, 不支持2位及以上, e.g. 10.1, 1.12
-            if (unlikely(ch != '.')) return HTTP_ERR_400;
+        case st_major_digit:
+            if (unlikely(ch != '.')) return HTTP_ERR_505;
             state = st_first_minor_digit;
             break;
         case st_first_minor_digit:
             if (unlikely(ch < '0' || ch > '9')) return HTTP_ERR_400;
             this->http_minor = ch - '0';
-            if (unlikely(this->http_minor > 9)) return HTTP_ERR_505;
-            state = st_after_version;
+            state = st_minor_digit;
             break;
-        case st_after_version:
+        case st_minor_digit:
             if (likely(ch == CR)) { state = st_almost_done; break; }
-            return HTTP_ERR_400;
+            if (unlikely(ch < '0' || ch > '9')) return HTTP_ERR_400;
+            if (this->http_minor > 99) return HTTP_ERR_505;
+            this->http_minor = this->http_minor * 10 + (ch - '0');
+            break;
         case st_almost_done:
             if (ch == LF) { state = st_end; break; }
             return HTTP_ERR_400;
@@ -174,8 +175,8 @@ int http_parser::parse_header_line() {
         st_value,
         st_space_after_value,
         st_almost_done,
-        st_header_almost_done,
-        st_header_end,
+        st_req_almost_done,
+        st_req_end,
         st_end
     };
 
@@ -187,30 +188,29 @@ int http_parser::parse_header_line() {
         ch = *pos;
         switch (state) {
         case st_start:
-            if (ch == CR) { this->header_end = pos; state = st_header_almost_done; break; }
-            //if (ch == LF) { this->header_end = pos; state = st_header_end; break; }
+            if (ch == CR) { this->req_end = pos; state = st_req_almost_done; break; }
+            //if (ch == LF) { this->req_end = pos; state = st_req_end; break; }
             this->header_name_start = pos;
             this->header_start = pos;
             state = st_name;
             if (unlikely(ch <= 0x20 || ch == 0x7f || ch == ':')) { // any CHAR except CTL or SEP
-                this->header_end = pos;
                 return HTTP_ERR_400;
             }
             break;
         case st_name:
             if (ch == ':') { this->header_name_end = pos; state = st_space_before_value; }
             // any CHAR except CTL or SEP
-            if (unlikely(ch <= 0x20 || ch == 0x7f)) { this->header_end = pos; return HTTP_ERR_400; }
+            if (unlikely(ch <= 0x20 || ch == 0x7f)) { this->req_end = pos; return HTTP_ERR_400; }
             break;
         case st_space_before_value:
             if (ch == ' ' || ch == '\t') { break; }
-            else if (ch == CR) { this->header_end = pos; state = st_almost_done; }
-            else if (ch == '\0') { this->header_end = pos; return HTTP_ERR_400; }
+            else if (ch == CR) { this->req_end = pos; state = st_almost_done; }
+            else if (ch == '\0') { this->req_end = pos; return HTTP_ERR_400; }
             else { this->value_start = pos; state = st_value; }
             break;
         case st_value:
-            if (ch == ' ') { this->header_end = pos; this->value_end = pos; state = st_space_after_value; }
-            else if (ch == CR) { this->header_end = pos; this->value_end = pos; state = st_almost_done; }
+            if (ch == ' ') { this->value_end = pos; state = st_space_after_value; }
+            else if (ch == CR) { this->value_end = pos; state = st_almost_done; }
             break;
         case st_space_after_value:
             if (ch == ' ') { /*maybe there are spaces between value*/ break; }
@@ -220,16 +220,16 @@ int http_parser::parse_header_line() {
         case st_almost_done:
             if (ch == LF) { state = st_end; break; }
             return HTTP_ERR_400;
-        case st_header_almost_done:
-            if (ch == LF) { state = st_header_end; break; }
+        case st_req_almost_done:
+            if (ch == LF) { this->req_end_crlf = pos + 1; state = st_req_end; break; }
             return HTTP_ERR_400;
         } // end of `switch (state)'
-        if (state == st_end || state == st_header_end)
+        if (state == st_end || state == st_req_end)
             break;
     } // end of `for (int i = 0; i < len; ++i)'
 
     this->start = pos + 1;
     if (state == st_end) return http_parser::parse_ok;
-    if (state == st_header_end) return http_parser::end_of_req;
+    if (state == st_req_end) return http_parser::end_of_req;
     return http_parser::partial_req; // partial
 }

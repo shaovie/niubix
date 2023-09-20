@@ -17,6 +17,8 @@ public:
         this->end = end;
     }
 
+    inline int http_version() { return (int)this->http_major * 100 + (int)this->http_minor; }
+
     // If parsing fails, a status code will be returned, otherwise 0 will be returned
     int parse_request_line();
     int parse_uri(const char *&path_end, const char *&query_start, const char *&query_end);
@@ -33,13 +35,13 @@ public:
 
     const char *req_start           = nullptr; // request line
     const char *req_end             = nullptr; // not containing empty lines \r\n
+    const char *req_end_crlf        = nullptr; // include \r\n
     const char *uri_start           = nullptr;
     const char *uri_end             = nullptr;
 
     const char *header_name_start   = nullptr;
     const char *header_name_end     = nullptr;
     const char *header_start        = nullptr;
-    const char *header_end          = nullptr;
     const char *value_start         = nullptr;
     const char *value_end           = nullptr;
 };

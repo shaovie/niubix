@@ -165,3 +165,4 @@ tcpdump tcp port 8080 抓包查看 niubix 实际数据，包含 X-Real-IP, XFF �
 - [ ] More balance prolicy
 - [ ] Https
 - [ ] TCP protocol + Proxy Protocol
+- [ ] Finally, optimize memory

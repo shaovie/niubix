@@ -43,19 +43,25 @@ public:
 
     virtual void frontend_inactive();
     virtual void on_frontend_inactive();
+
+    void forward_to_backend(const char *buf, const int len);
 private:
     int to_connect_backend();
     bool response_err_and_close(const int errcode);
+    bool handle_data(const char *buf, int len);
     bool handle_request(const char *buf, int len);
     void handle_partial_req(const http_parser &hp, const char *buf, const int rlen);
-    bool filter_headers(const http_parser &parser, parse_req_result &prr);
-    int a_complete_req(const parse_req_result &por);
+    int  filter_headers(const http_parser &parser, parse_req_result &prr);
+    int a_complete_req(parse_req_result &prr);
+    void to_match_app_by_host();
+    void save_received_data_before_match_app(const char *buf, const int len);
 private:
     char state = 0;
     char method = 0;
     char local_addr_len = 0;
     char remote_addr_len = 0;
     int partial_buf_len = 0;
+    int received_data_len_before_match_app = 0;
     socklen_t socklen = 0;
     int64_t start_time = 0; //
     int64_t recv_time = 0;  // for app.frontend_idle_timeout
@@ -67,6 +73,8 @@ private:
     char *local_addr = nullptr;
     char *remote_addr = nullptr;
     char *partial_buf = nullptr;
+    char *received_data_before_match_app = nullptr;
+    char *host = nullptr;
 };
 
 #endif // NBX_HTTP_FRONTEND_H_

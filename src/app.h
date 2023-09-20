@@ -33,6 +33,7 @@ public:
     public:
         bool with_x_forwarded_for = true;
         bool with_x_real_ip = true;
+        bool is_default = false;
         int balance_policy  = 0;
         int connect_backend_timeout = 1000; // msec
         int frontend_a_complete_req_timeout = 5000; // msec
@@ -81,6 +82,7 @@ public:
 
     static int run_all(const ::conf *cf);
 
+    static app *match_app_by_host(const char *host);
 public:
     static std::unordered_map<int/*listen port*/, std::vector<app *> *> app_map_by_port;
     static std::unordered_map<std::string/*listen*/, int/*protocol*/> listen_set;

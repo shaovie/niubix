@@ -12,6 +12,7 @@ const int http::err_codes[HTTP_ERR_SIZE] = {
     [HTTP_ERR_407] = 407,
     [HTTP_ERR_408] = 408,
     [HTTP_ERR_410] = 410,
+    [HTTP_ERR_411] = 411,
     [HTTP_ERR_413] = 413,
     [HTTP_ERR_414] = 414,
     [HTTP_ERR_421] = 421,
@@ -100,6 +101,14 @@ const char *http::err_msgs[HTTP_ERR_SIZE] = {
         "Content-Type: text/html\r\n"
         "\r\n"
         "<html><body><h1>410 Gone</h1>\nThe resource is no longer available and will not be available again.\n</body></html>\n",
+
+    [HTTP_ERR_411] =
+        "HTTP/1.1 411 Length Required\r\n"
+        "Content-length: 199\r\n"
+        "Cache-Control: no-cache\r\n"
+        "Content-Type: text/html\r\n"
+        "\r\n"
+        "<html><body><h1>411 Length Required</h1>\nThe Content-Length header is omitted and at the beginning of each chunk you need to add the length of the current chunk in hexadecimal format.\n</body></html>\n",
 
     [HTTP_ERR_413] =
         "HTTP/1.1 413 Payload Too Large\r\n"
