@@ -61,8 +61,6 @@ public:
             ::close(this->fd);
             this->fd = -1;
         }
-        this->wrker = nullptr;
-        this->ti    = nullptr;
     }
 
 protected:
