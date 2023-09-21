@@ -160,6 +160,8 @@ int admin::a_complete_req(const http_parser &parser) {
         this->shutdown();
     else if (::strncmp(uri_buf, "/reload", path_end - uri_buf) == 0)
         this->reload();
+    else if (::strncmp(uri_buf, "/conf_version", path_end - uri_buf) == 0)
+        this->conf_version();
     else
         return HTTP_ERR_404;
 
@@ -241,5 +243,12 @@ void admin::reload() {
     nlohmann::json resp;
     resp["code"] = 0;
     resp["msg"] = "reloading";
+    this->response_json(resp.dump());
+}
+void admin::conf_version() {
+    nlohmann::json resp;
+    resp["code"] = 0;
+    resp["msg"] = "ok";
+    resp["conf_version"] = g::cf->version;
     this->response_json(resp.dump());
 }

@@ -1,4 +1,5 @@
 {
+    "version": "v1.0", // optional, conf version
     "pid_file": "/tmp/niubix.pid",
     "master_log": "/tmp/niubix-master.log",
     "max_fds": 65535, // 0 represents system default limits `ulimit -n`. worker will inherit

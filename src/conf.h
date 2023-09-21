@@ -21,6 +21,7 @@ public:
     int  max_fds = 0;
     int  worker_io_buf_size = 32*1024;
     int  timer_init_size = 1024*4;
+    char version[MAX_FILE_NAME_LENGTH] = {0};
     char pid_file[MAX_FILE_NAME_LENGTH] = {0};
     char log_dir[MAX_FILE_NAME_LENGTH] = {0};
     char log_level[MAX_FILE_NAME_LENGTH] = {0};

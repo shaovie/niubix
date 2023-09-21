@@ -18,6 +18,14 @@ int conf::load(const char *path) {
         return -1;
     }
 
+    auto &ver = js.value("version", "");
+    if (ver.length() >= sizeof(this->version)) {
+        fprintf(stderr, "niubix: conf - version too long!\n");
+        return -1;
+    }
+    ::strncpy(this->version, ver.c_str(), sizeof(this->version) - 1);
+    this->version[sizeof(this->version) - 1] = '\0';
+
     ::strncpy(this->master_log, js.value("master_log", "").c_str(), sizeof(this->master_log) - 1);
     this->master_log[sizeof(this->master_log) - 1] = '\0';
     if (::strlen(this->master_log) < 1) {

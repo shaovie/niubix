@@ -22,6 +22,7 @@ public:
 
     virtual void on_close();
 private:
+    void conf_version();
     void shutdown();
     void reload();
     void set_backend_down(const char *query_start, const char *query_end);
