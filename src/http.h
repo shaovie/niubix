@@ -1,12 +1,15 @@
 #ifndef NBX_HTTP_H_
 #define NBX_HTTP_H_
 
-#define MAX_FULL_REQ_LEN    8192
-#define MAX_URI_LEN         2048
-#define MAX_EXTRA_CRLFS     16  // "\r\n" = 2
-#define MAX_EXTRA_SPACES    8
-#define MAX_HOST_LEN        255
-#define MAX_EXTENSION_LEN_IN_CHUNK  255
+#include <cstdint>
+
+#define MAX_FULL_REQ_LEN                    8192
+#define MAX_URI_LEN                         2048
+#define MAX_EXTRA_CRLFS                     16  // "\r\n" = 2
+#define MAX_EXTRA_SPACES                    8
+#define MAX_HOST_LEN                        255
+#define MAX_EXTENSION_LEN_IN_CHUNK          255
+#define MAX_TRAILER_HEADERS_LEN_IN_CHUNK    255
 
 /* All implemented HTTP status codes */
 enum {

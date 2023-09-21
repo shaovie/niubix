@@ -10,6 +10,18 @@ public:
         parse_ok        = 9002,
         end_of_req      = 9003,
     };
+    class chunked_ret {
+    public:
+        enum {
+            partial_chunk   = 1,
+            get_chunk_data  = 2,
+            all_chunk_end   = 3,
+        };
+        chunked_ret() = default;
+        int result = 0;
+        int64_t size = 0; // chunk data size, not included CRLF
+        const char *data_start = nullptr;
+    };
     http_parser() = default;
     http_parser(const char *start, const char *end): start(start), end(end) { }
     inline void reset(const char *start, const char *end) {
@@ -23,8 +35,8 @@ public:
     int parse_request_line();
     int parse_uri(const char *&path_end, const char *&query_start, const char *&query_end);
 
-    // 0;
     int parse_header_line();
+    int parse_chunked(http_parser::chunked_ret *cr);
 public:
     char http_major                 = 0;
     char http_minor                 = 0;

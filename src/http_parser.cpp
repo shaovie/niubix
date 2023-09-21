@@ -154,10 +154,7 @@ int http_parser::parse_uri(const char *&path_end, const char *&query_start,
             state = st_check_fragment;
             break;
         case st_check_fragment:
-            if (ch == '#') {
-                query_end = pos;
-                state = st_end;
-            }
+            if (ch == '#') { query_end = pos; state = st_end; }
             break;
         }
         if (state == st_end)
@@ -232,15 +229,15 @@ int http_parser::parse_header_line() {
     if (state == st_end) return http_parser::parse_ok;
     if (state == st_req_end) return http_parser::end_of_req;
     return http_parser::partial_req; // partial
-}/*
-int http_parser::parse_chunked(chunked_ret *cr) {
+}
+// https://datatracker.ietf.org/doc/html/rfc2616#section-3.6.1
+int http_parser::parse_chunked(http_parser::chunked_ret *cr) {
     enum {
         st_chunk_start = 0, // MUST 0
         st_chunk_size,
         st_chunk_extension,
         st_chunk_extension_almost_done,
         st_chunk_data,
-        st_chunk_end,
         st_after_data,
         st_after_data_almost_done,
         st_last_chunk_extension,
@@ -249,12 +246,16 @@ int http_parser::parse_chunked(chunked_ret *cr) {
         st_trailer_almost_done,
         st_trailer_header,
         st_trailer_header_almost_done,
+        st_all_chunks_end,
         st_exit
     };
-    int state = st_start;
+    int state = st_chunk_start;
+    if (cr->result == http_parser::chunked_ret::get_chunk_data && cr->size == 0)
+        state = st_after_data;
     char ch, c = 0;
     const char *pos = nullptr;
     const char *extension_start = nullptr;
+    const char *trailer_headers_start = nullptr;
 
     for (pos = this->start; pos < this->end; ++pos) {
         ch = *pos;
@@ -276,7 +277,7 @@ int http_parser::parse_chunked(chunked_ret *cr) {
             if (cr->size > MAX_OFF_T_VALUE / 16)
                 return HTTP_ERR_413;
             if (ch >= '0' && ch <= '9') {
-                cr->size = cf->size * 16 + (ch - '0');
+                cr->size = cr->size * 16 + (ch - '0');
                 break;
             }
             c = LOWER(ch);
@@ -285,7 +286,7 @@ int http_parser::parse_chunked(chunked_ret *cr) {
                 cr->size = cr->size * 16 + (c - 'a' + 10);
                 break;
             }
-            if (cr->size == 0) { // 
+            if (cr->size == 0) { // last-chunk line
                 if (ch == CR) { state = st_last_chunk_extension_almost_done; break; }
                 if (ch == ';') { state = st_last_chunk_extension; break; }
                 return HTTP_ERR_400;
@@ -311,12 +312,37 @@ int http_parser::parse_chunked(chunked_ret *cr) {
             return HTTP_ERR_400;
         case st_chunk_data:
             cr->data_start = pos;
-            state = st_exit;
             break;
+        case st_after_data:
+            if (ch == CR) { state = st_after_data_almost_done; break; }
+            return HTTP_ERR_400;
+        case st_after_data_almost_done:
+            if (ch == LF) { state = st_chunk_start; break; }
+            return HTTP_ERR_400;
+        case st_trailer:
+            if (ch == CR) { state = st_trailer_almost_done; break; }
+            state = st_trailer_header;
+            if (trailer_headers_start == nullptr) trailer_headers_start = pos;
+            else if (pos - trailer_headers_start > MAX_TRAILER_HEADERS_LEN_IN_CHUNK) return HTTP_ERR_400;
+            break;
+        case st_trailer_almost_done:
+            if (ch == LF) { state = st_all_chunks_end; break; }
+            return HTTP_ERR_400;
+        case st_trailer_header:
+            if (ch == CR) { state = st_trailer_header_almost_done; break; }
+            break;
+        case st_trailer_header_almost_done:
+            if (ch == LF) { state = st_trailer; break; }
+            return HTTP_ERR_400;
         }
-        if (state == st_exit)
+        if (state == st_chunk_data || state == st_all_chunks_end)
             break;
     }
     this->start = pos + 1;
-    return http_parser::parse_ok;
-}*/
+    cr->result = http_parser::chunked_ret::partial_chunk;
+    if (state == st_all_chunks_end)
+        cr->result = http_parser::chunked_ret::all_chunk_end;
+    else if (state == st_chunk_data)
+        cr->result = http_parser::chunked_ret::get_chunk_data;
+    return 0;
+}
