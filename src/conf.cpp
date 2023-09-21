@@ -18,7 +18,7 @@ int conf::load(const char *path) {
         return -1;
     }
 
-    auto &ver = js.value("version", "");
+    const auto &ver = js.value("version", "");
     if (ver.length() >= sizeof(this->version)) {
         fprintf(stderr, "niubix: conf - version too long!\n");
         return -1;
