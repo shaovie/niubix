@@ -27,17 +27,14 @@ public:
 
     int recv(char* &buff);
     int send(const char *buff, const int len);
-    void *poll_cache_get(const int id);
 
     virtual bool on_write();
 
     void destroy();
 private:
-    virtual void sync_ordered_send(async_send_buf &asb);
-
     bool async_send_polling = false;
     int async_send_buf_size = 0;
-    ringq<async_send_buf> async_send_buf_q{2};
+    ringq<async_send_buf> *async_send_buf_q = nullptr;
 };
 
 #endif // NBX_IO_HANDLE_H_
