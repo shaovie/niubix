@@ -106,7 +106,7 @@ void evpoll::run() {
 
             // EPOLLHUP refer to man 2 epoll_ctl
             if (ev_itor->events & (EPOLLHUP|EPOLLERR)) {
-                if (pd->eh != nullptr) {
+                if (likely(pd->eh != nullptr)) {
                     eh = pd->eh;
                     this->remove(pd->fd, ev_handler::ev_all); // MUST before on_close
                     eh->on_close();
@@ -116,7 +116,7 @@ void evpoll::run() {
 
             // MUST before EPOLLIN (e.g. connect)
             if ((ev_itor->events & (EPOLLOUT))) {
-                if (pd->eh == nullptr)
+                if (unlikely(pd->eh == nullptr))
                     continue ;
                 if (pd->eh->on_write() == false) {
                     eh = pd->eh;
@@ -127,7 +127,7 @@ void evpoll::run() {
             }
 
             if ((ev_itor->events & (EPOLLIN|EPOLLRDHUP))) {
-                if (pd->eh == nullptr)
+                if (unlikely(pd->eh == nullptr))
                     continue ;
                 if (pd->eh->on_read() == false) {
                     eh = pd->eh;
