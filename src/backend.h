@@ -20,7 +20,7 @@ public:
         matched_app(ap),
         frontend_conn(f)
     { this->set_worker(w); }
-    virtual ~backend();
+    virtual ~backend() { }
 
     virtual bool on_open();
 

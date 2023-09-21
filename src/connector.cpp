@@ -39,6 +39,9 @@ public:
         this->timeout_trigger = true;
         this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
         this->eh->on_connect_fail(err_connect_timeout);
+        // 这里直接调用eh的on_connect_fail, 如果on_connect_fail中调用了remove_ev, 那可能会产生:
+        // timerfd 和 eh->fd都在ready-events列表中, poll_desc提前将pd->eh置空, 导致ready-events列表
+        // 中的eh为空了, 所以在epoll::run中要处理eh==nullptr的情况
         this->on_close();
         return false;
     }

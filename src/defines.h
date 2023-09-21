@@ -12,6 +12,7 @@
 //= log
 #define MAX_LENGTH_OF_ONE_LOG                4095 
 #define MAX_FILE_NAME_LENGTH                 255
+#define MAX_OFF_T_VALUE                      9223372036854775807L
 
 #define CR                  '\r'
 #define LF                  '\n'

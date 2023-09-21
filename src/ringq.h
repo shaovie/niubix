@@ -37,7 +37,6 @@ private:
         if (new_size == 0)
             new_size = 2;
         item_t *newrq = new item_t[new_size]();
-
         for (int i = 0; i < this->len; ++i)
             newrq[i] = this->rq[(this->head + i) % this->size];
         delete[] this->rq;

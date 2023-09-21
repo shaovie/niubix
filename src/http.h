@@ -6,6 +6,7 @@
 #define MAX_EXTRA_CRLFS     16  // "\r\n" = 2
 #define MAX_EXTRA_SPACES    8
 #define MAX_HOST_LEN        255
+#define MAX_EXTENSION_LEN_IN_CHUNK  255
 
 /* All implemented HTTP status codes */
 enum {

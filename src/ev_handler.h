@@ -45,8 +45,6 @@ public:
     virtual void set_acceptor(acceptor *) { };
     virtual void set_remote_addr(const struct sockaddr * /*addr*/, const socklen_t /*socklen*/) { };
 
-    virtual void sync_ordered_send(async_send_buf &) { }
-
     inline virtual int get_fd() const { return this->fd; }
     inline virtual void set_fd(const int v) { this->fd = v; }
 

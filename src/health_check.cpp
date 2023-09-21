@@ -73,7 +73,7 @@ public:
         this->req_time = this->wrker->now_msec;
         char buf[1024];
         int ret = ::snprintf(buf, sizeof(buf),
-            "GET %s HTTP/1.0\r\n"
+            "GET %s HTTP/1.1\r\n"
             "Connection: close\r\n"
             "Server: niubix\r\n"
             "\r\n", this->health_check_uri.c_str());

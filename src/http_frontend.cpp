@@ -24,8 +24,7 @@ http_frontend::~http_frontend() {
     if (this->received_data_before_match_app != nullptr)
         ::free(this->received_data_before_match_app);
 
-    if (this->wrker != nullptr)
-        this->wrker->http_frontend_set.erase(this);
+    this->wrker->http_frontend_set.erase(this);
 }
 void http_frontend::set_remote_addr(const struct sockaddr *addr, const socklen_t) {
     if (this->remote_addr == nullptr)
@@ -105,6 +104,8 @@ int http_frontend::to_connect_backend() {
 // NOTE frontend & backend 不能在各自的执行栈中操作对方的资源,这样会导致资源管理混乱
 // poller中有ready_events 队列, 有可能backend另一个事件已经wait到了
 // 交由taskq统一释放, 这样不受wait list影响
+// 2023-09-20 NOTE: evpoll::run中处理了eh!=nullptr的情况, 可以避免互相调用崩溃的问题,
+// 但异步处理还是更优雅, 合理一些
 void http_frontend::backend_connect_ok() {
     if (this->backend_conn == nullptr)
         return ; // 如果早就解除关系了, 就忽略它的事件

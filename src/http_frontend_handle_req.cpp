@@ -64,6 +64,7 @@ bool http_frontend::handle_request(const char *rbuf, int rlen) {
             this->handle_partial_req(parser, rbuf, rlen);
             return true;
         } else if (ret != http_parser::parse_ok) {
+            ((char *)rbuf)[rlen] = '\0';
             log::warn("invalid req [%s] code=%d", parser.req_start, ret);
             return this->response_err_and_close(ret);
         }

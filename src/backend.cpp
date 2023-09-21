@@ -12,7 +12,6 @@
 // NOTE frontend & backend 不能在各自的执行栈中释放对方的资源,这样会导致资源过早释放
 // poller中有ready_events 队列, 有可能backend另一个事件已经wait到了
 // 交由taskq统一释放, 这样不受wait list影响
-backend::~backend() { }
 bool backend::on_open() {
     this->matched_app->backend_conn_ok_n.fetch_add(1, std::memory_order_relaxed);
     this->state = conn_ok;

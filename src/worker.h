@@ -75,21 +75,6 @@ public:
         this->wakeup->wake();
     }
     void push_async_task(const task_in_worker &t) { this->ataskq->push(t); }
-
-    void init_poll_sync_opt(const int t, void *arg);
-    void do_poll_sync_opt(const int t, void *arg);
-    void poll_cache_set(const int id, void *val, void (*free_func)(void *)) {
-        auto itor = this->pcache.find(id);
-        if (itor != this->pcache.end())
-            free_func(itor->second);
-        this->pcache[id] = val;
-    }
-    void *poll_cache_get(const int id) {
-        auto itor = this->pcache.find(id);
-        if (itor != this->pcache.end())
-            return itor->second;
-        return nullptr;
-    }
 public:
     int worker_no = 0;
     int cpu_id = -1;
@@ -106,7 +91,6 @@ public:
     worker_wakeup *wakeup = nullptr;
     std::vector<acceptor *> acceptor_list;
     pthread_t thread_id;
-    std::unordered_map<int, void *> pcache;
 
     std::set<http_frontend *> http_frontend_set;
 };

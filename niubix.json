@@ -26,7 +26,7 @@
 
             "http_host": "default", // e.g. api.niubix.com
 
-            "connect_backend_timeout": 1000, // connect backend server timeout, > 0 in msec
+            "connect_backend_timeout": 2000, // connect backend server timeout, > 0 in msec
             "frontend_a_complete_req_timeout": 5000, // recv a complete req timeout, > 300 in msec
             "frontend_idle_timeout": 10000, // close conection if idle time exceeds N, > 300 in msec
 

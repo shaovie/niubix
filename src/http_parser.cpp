@@ -232,4 +232,91 @@ int http_parser::parse_header_line() {
     if (state == st_end) return http_parser::parse_ok;
     if (state == st_req_end) return http_parser::end_of_req;
     return http_parser::partial_req; // partial
-}
+}/*
+int http_parser::parse_chunked(chunked_ret *cr) {
+    enum {
+        st_chunk_start = 0, // MUST 0
+        st_chunk_size,
+        st_chunk_extension,
+        st_chunk_extension_almost_done,
+        st_chunk_data,
+        st_chunk_end,
+        st_after_data,
+        st_after_data_almost_done,
+        st_last_chunk_extension,
+        st_last_chunk_extension_almost_done,
+        st_trailer,
+        st_trailer_almost_done,
+        st_trailer_header,
+        st_trailer_header_almost_done,
+        st_exit
+    };
+    int state = st_start;
+    char ch, c = 0;
+    const char *pos = nullptr;
+    const char *extension_start = nullptr;
+
+    for (pos = this->start; pos < this->end; ++pos) {
+        ch = *pos;
+        switch (state) {
+        case st_chunk_start:
+            if (ch >= '0' && ch <= '9') {
+                state = st_chunk_size;
+                cr->size = ch - '0';
+                break;
+            }
+            c = LOWER(ch);
+            if (c >= 'a' && c <= 'f') {
+                state = st_chunk_size;
+                cr->size = c - 'a' + 10;
+                break;
+            }
+            return HTTP_ERR_400;
+        case st_chunk_size:
+            if (cr->size > MAX_OFF_T_VALUE / 16)
+                return HTTP_ERR_413;
+            if (ch >= '0' && ch <= '9') {
+                cr->size = cf->size * 16 + (ch - '0');
+                break;
+            }
+            c = LOWER(ch);
+            if (c >= 'a' && c <= 'f') {
+                state = st_chunk_size;
+                cr->size = cr->size * 16 + (c - 'a' + 10);
+                break;
+            }
+            if (cr->size == 0) { // 
+                if (ch == CR) { state = st_last_chunk_extension_almost_done; break; }
+                if (ch == ';') { state = st_last_chunk_extension; break; }
+                return HTTP_ERR_400;
+            }
+            if (ch == CR) { state = st_chunk_extension_almost_done; break; }
+            if (ch == ';') { state = st_chunk_extension; break; }
+            return HTTP_ERR_400;
+        case st_chunk_extension:
+            if (extension_start == nullptr) { extension_start = pos; }
+            else if (pos - extension_start > MAX_EXTENSION_LEN_IN_CHUNK) { return HTTP_ERR_400;}
+            if (ch == CR) { state = st_chunk_extension_almost_done; break; }
+            break;
+        case st_chunk_extension_almost_done:
+            if (ch == LF) { state = st_chunk_data; break; }
+            return HTTP_ERR_400;
+        case st_last_chunk_extension:
+            if (extension_start == nullptr) { extension_start = pos; }
+            else if (pos - extension_start > MAX_EXTENSION_LEN_IN_CHUNK) { return HTTP_ERR_400;}
+            if (ch == CR) { state = st_last_chunk_extension_almost_done; break; }
+            break;
+        case st_last_chunk_extension_almost_done:
+            if (ch == LF) { state = st_trailer; break; }
+            return HTTP_ERR_400;
+        case st_chunk_data:
+            cr->data_start = pos;
+            state = st_exit;
+            break;
+        }
+        if (state == st_exit)
+            break;
+    }
+    this->start = pos + 1;
+    return http_parser::parse_ok;
+}*/
