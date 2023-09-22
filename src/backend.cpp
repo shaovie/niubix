@@ -81,3 +81,6 @@ bool backend::on_read() {
         return false;
     return true; // ret < 0
 }
+void backend::on_send_buffer_drained() {
+    // fronted can continue recv data
+}

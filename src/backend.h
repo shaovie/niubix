@@ -30,8 +30,12 @@ public:
 
     virtual void on_close();
 
+    virtual void on_send_buffer_drained();
+
     void frontend_close();
     void on_frontend_close();
+
+    inline int write_buff_size() { return this->async_send_buf_size; }
 private:
     char state = 0;
     app *matched_app = nullptr;
