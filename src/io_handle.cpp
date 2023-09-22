@@ -79,6 +79,7 @@ bool io_handle::on_write() {
     if (this->async_send_buf_q->empty() && this->async_send_polling == true) {
         this->wrker->remove_ev(this->fd, ev_handler::ev_write);
         this->async_send_polling = false;
+        this->on_send_buffer_drained();
     }
     return true;
 }
