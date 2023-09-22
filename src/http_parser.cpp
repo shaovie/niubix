@@ -218,7 +218,7 @@ int http_parser::parse_header_line() {
             if (ch == LF) { state = st_end; break; }
             return HTTP_ERR_400;
         case st_req_almost_done:
-            if (ch == LF) { this->req_end_crlf = pos + 1; state = st_req_end; break; }
+            if (ch == LF) { this->req_end_with_crlf = pos + 1; state = st_req_end; break; }
             return HTTP_ERR_400;
         } // end of `switch (state)'
         if (state == st_end || state == st_req_end)
@@ -323,7 +323,8 @@ int http_parser::parse_chunked(http_parser::chunked_ret *cr) {
             if (ch == CR) { state = st_trailer_almost_done; break; }
             state = st_trailer_header;
             if (trailer_headers_start == nullptr) trailer_headers_start = pos;
-            else if (pos - trailer_headers_start > MAX_TRAILER_HEADERS_LEN_IN_CHUNK) return HTTP_ERR_400;
+            else if (pos - trailer_headers_start > MAX_TRAILER_HEADERS_LEN_IN_CHUNK)
+                return HTTP_ERR_400;
             break;
         case st_trailer_almost_done:
             if (ch == LF) { state = st_all_chunks_end; break; }
@@ -338,7 +339,8 @@ int http_parser::parse_chunked(http_parser::chunked_ret *cr) {
         if (state == st_chunk_data || state == st_all_chunks_end)
             break;
     }
-    this->start = pos + 1;
+    if (pos > this->start && pos != this->end)
+        this->start = pos + 1;
     cr->result = http_parser::chunked_ret::partial_chunk;
     if (state == st_all_chunks_end)
         cr->result = http_parser::chunked_ret::all_chunk_end;

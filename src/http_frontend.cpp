@@ -73,12 +73,13 @@ bool http_frontend::on_open() {
     }
     return true;
 }
-void http_frontend::to_match_app_by_host() {
+bool http_frontend::to_match_app_by_host() {
     this->matched_app = app::match_app_by_host(this->host);
-    if (this->matched_app == nullptr || this->to_connect_backend() != 0) {
-        this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
-        this->on_close();
-    }
+    if (this->matched_app == nullptr || this->to_connect_backend() != 0)
+        return false; // goto on_close
+
+    this->wrker->remove_ev(this->get_fd(), ev_handler::ev_read);
+    return true;
 }
 int http_frontend::to_connect_backend() {
     this->matched_app->accepted_num.fetch_add(1, std::memory_order_relaxed);
@@ -200,10 +201,9 @@ bool http_frontend::on_read() {
     return true; // ret < 0
 }
 void http_frontend::forward_to_backend(const char *buf, const int len) {
-    if (this->backend_conn != nullptr) {
-        this->backend_conn->send(buf, len);
+    if (unlikely(this->backend_conn == nullptr))
         return ;
-    }
+    this->backend_conn->send(buf, len);
 }
 void http_frontend::save_received_data_before_match_app(const char *buf, const int len) {
     if (this->matched_app != nullptr)
@@ -223,6 +223,7 @@ void http_frontend::save_received_data_before_match_app(const char *buf, const i
     } else {
         bf = (char *)::malloc(bf_len);
     }
+
     ::memcpy(bf + copy_len, buf, len);
     this->received_data_before_match_app = bf;
     this->received_data_len_before_match_app = bf_len;

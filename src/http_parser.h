@@ -13,13 +13,13 @@ public:
     class chunked_ret {
     public:
         enum {
-            partial_chunk   = 1,
+            partial_chunk   = 1, // chunk struct incomplete
             get_chunk_data  = 2,
             all_chunk_end   = 3,
         };
         chunked_ret() = default;
         int result = 0;
-        int64_t size = 0; // chunk data size, not included CRLF
+        uint64_t size = 0; // chunk data size, not included CRLF
         const char *data_start = nullptr;
     };
     http_parser() = default;
@@ -47,7 +47,7 @@ public:
 
     const char *req_start           = nullptr; // request line
     const char *req_end             = nullptr; // not containing empty lines \r\n
-    const char *req_end_crlf        = nullptr; // include \r\n
+    const char *req_end_with_crlf   = nullptr; // include \r\n
     const char *uri_start           = nullptr;
     const char *uri_end             = nullptr;
 

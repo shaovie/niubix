@@ -46,16 +46,19 @@ public:
 
     void forward_to_backend(const char *buf, const int len);
 private:
-    int to_connect_backend();
+    int  to_connect_backend();
     bool response_err_and_close(const int errcode);
     bool handle_data(const char *buf, int len);
     bool handle_request(const char *buf, int len);
-    void handle_partial_req(const http_parser &hp, const char *buf, const int rlen);
+    int  handle_chunk(const char *rbuf, int rlen);
+    int  handle_first_chunk(http_parser &parser, parse_req_result &prr);
+    void handle_partial_req(const char *req_start, const int left_len);
     int  filter_headers(const http_parser &parser, parse_req_result &prr);
-    int a_complete_req(parse_req_result &prr);
-    void to_match_app_by_host();
+    void a_complete_req(parse_req_result &prr);
+    bool to_match_app_by_host();
     void save_received_data_before_match_app(const char *buf, const int len);
 private:
+    bool transfer_chunked = false;
     char state = 0;
     char method = 0;
     char local_addr_len = 0;
@@ -67,6 +70,7 @@ private:
     int64_t recv_time = 0;  // for app.frontend_idle_timeout
     int64_t a_complete_req_time = 0;  // for app.frontend_a_complete_req_timeout
     uint64_t content_length  = 0;
+    uint64_t chunk_size  = 0;
     acceptor *acc = nullptr;
     app *matched_app = nullptr;
     backend *backend_conn = nullptr;
