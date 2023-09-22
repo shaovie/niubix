@@ -86,7 +86,7 @@ int app::load_conf(nlohmann::json &apps) {
             return -1;
         }
 
-        cf->connect_backend_timeout = itor.value("connect_backend_timeout", 1000);
+        cf->connect_backend_timeout = itor.value("connect_backend_timeout", 2000);
         if (cf->connect_backend_timeout < 1) {
             fprintf(stderr, "niubix: conf - apps[%d].connect_backend_timeout is invalid!\n", i);
             return -1;
@@ -137,13 +137,18 @@ int app::load_conf(nlohmann::json &apps) {
             }
             bp->health_check_period = bv.value("health_check_period", 0);
             if (bp->health_check_period > 0) {
-                bp->health_check_timeout = bv.value("health_check_timeout", 0);
+                bp->health_check_timeout = bv.value("health_check_timeout", 2000);
                 if (bp->health_check_timeout < 1) {
                     fprintf(stderr,
                         "niubix: conf - apps[%d].health_check_timeout is invalid!\n", i);
                     return -1;
                 }
                 bp->health_check_uri = bv.value("health_check_uri", "");
+                if (bp->health_check_period > 0 && bp->health_check_uri.length() == 0) {
+                    fprintf(stderr,
+                        "niubix: conf - apps[%d].health_check_uri is invalid!\n", i);
+                    return -1;
+                }
                 if (bp->health_check_uri.length() > 0
                     && cf->backend_protocol == app::http_protocol) {
                     if (bp->health_check_uri[0] != '/') {
