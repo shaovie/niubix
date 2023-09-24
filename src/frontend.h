@@ -21,6 +21,9 @@ public:
 
     virtual void frontend_inactive() = 0;
     virtual void on_frontend_inactive() = 0;
+
+    virtual void backend_send_buffer_drained() = 0;
+    virtual void on_backend_send_buffer_drained() = 0;
 };
 
 #endif // NBX_FRONTEND_H_
