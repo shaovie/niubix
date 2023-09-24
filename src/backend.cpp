@@ -56,6 +56,36 @@ void backend::on_frontend_close() {
     this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
     this->on_close();
 }
+void backend::pause_recv() {
+    if (this->recv_paused == true)
+        return ;
+    this->wrker->remove_ev(this->get_fd(), ev_handler::ev_read);
+    this->recv_paused = true;
+}
+void backend::frontend_send_buffer_drained() {
+    if (this->state == closed)
+        return ;
+    this->wrker->push_task(task_in_worker(
+            task_in_worker::frontend_send_buffer_drained, this));
+}
+void backend::on_frontend_send_buffer_drained() {
+    if (this->recv_paused != true)
+        return ;
+    // continue recv data
+    if (this->wrker->add_ev(this, this->get_fd(), ev_handler::ev_read) != 0) {
+        log::error("backend conn resume recv add readev fail! %s", strerror(errno));
+
+        this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
+        this->on_close();
+        return ;
+    }
+    this->recv_paused = false;
+}
+void backend::on_send_buffer_drained() {
+    if (unlikely(this->frontend_conn == nullptr))
+        return ;
+    this->frontend_conn->backend_send_buffer_drained();
+}
 void backend::on_close() {
     if (this->state == active_ok)
         this->matched_app->backend_active_n.fetch_sub(1, std::memory_order_relaxed);
@@ -75,12 +105,11 @@ bool backend::on_read() {
     int ret = this->recv(buf);
     if (likely(ret > 0)) {
         this->frontend_conn->send(buf, ret);
+        if (this->frontend_conn->async_send_buff_size() > 0)
+            this->pause_recv();
         return true;
     }
     if (ret == 0) // closed
         return false;
     return true; // ret < 0
-}
-void backend::on_send_buffer_drained() {
-    // fronted can continue recv data
 }

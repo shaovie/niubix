@@ -36,6 +36,12 @@ void task_in_worker::do_task(const task_in_worker &t) {
         case task_in_worker::frontend_inactive:
             ((frontend *)t.p)->on_frontend_inactive();
             break;
+        case task_in_worker::frontend_send_buffer_drained:
+            ((backend *)t.p)->on_frontend_send_buffer_drained();
+            break;
+        case task_in_worker::backend_send_buffer_drained:
+            ((frontend *)t.p)->on_backend_send_buffer_drained();
+            break;
         default:
             log::error("unknown worker task");
             break;

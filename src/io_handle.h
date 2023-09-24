@@ -31,6 +31,7 @@ public:
     virtual bool on_write();
     virtual void on_send_buffer_drained() { };
 
+    inline int async_send_buff_size() { return this->async_send_buf_size; }
     void destroy();
 protected:
     bool async_send_polling = false;

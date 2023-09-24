@@ -204,6 +204,38 @@ void http_frontend::forward_to_backend(const char *buf, const int len) {
     if (unlikely(this->backend_conn == nullptr))
         return ;
     this->backend_conn->send(buf, len);
+    if (this->backend_conn->async_send_buff_size() > 0)
+        this->pause_recv();
+}
+void http_frontend::pause_recv() {
+    if (this->recv_paused == true)
+        return ;
+    this->wrker->remove_ev(this->get_fd(), ev_handler::ev_read);
+    this->recv_paused = true;
+}
+void http_frontend::backend_send_buffer_drained() {
+    if (this->state == closed)
+        return ;
+    this->wrker->push_task(task_in_worker(
+            task_in_worker::backend_send_buffer_drained, this));
+}
+void http_frontend::on_backend_send_buffer_drained() {
+    if (this->recv_paused != true)
+        return ;
+    // continue recv data
+    if (this->wrker->add_ev(this, this->get_fd(), ev_handler::ev_read) != 0) {
+        log::error("http_frontend resume recv add readev fail! %s", strerror(errno));
+
+        this->wrker->remove_ev(this->get_fd(), ev_handler::ev_all);
+        this->on_close();
+        return ;
+    }
+    this->recv_paused = false;
+}
+void http_frontend::on_send_buffer_drained() {
+    if (unlikely(this->backend_conn == nullptr))
+        return ;
+    this->backend_conn->frontend_send_buffer_drained();
 }
 void http_frontend::save_received_data_before_match_app(const char *buf, const int len) {
     if (this->matched_app != nullptr)

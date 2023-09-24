@@ -44,7 +44,12 @@ public:
     virtual void frontend_inactive();
     virtual void on_frontend_inactive();
 
+    virtual void on_send_buffer_drained();
+    virtual void backend_send_buffer_drained();
+    virtual void on_backend_send_buffer_drained();
+
     void forward_to_backend(const char *buf, const int len);
+    void pause_recv();
 private:
     int  to_connect_backend();
     bool response_err_and_close(const int errcode);
@@ -58,6 +63,7 @@ private:
     bool to_match_app_by_host();
     void save_received_data_before_match_app(const char *buf, const int len);
 private:
+    bool recv_paused = false;
     bool transfer_chunked = false;
     char state = 0;
     char method = 0;

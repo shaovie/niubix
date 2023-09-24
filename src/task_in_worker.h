@@ -14,6 +14,8 @@ public:
         frontend_close      = 5,
         close_acceptor      = 6,
         frontend_inactive   = 7,
+        frontend_send_buffer_drained   = 8,
+        backend_send_buffer_drained    = 9,
 
         gracefully_shutdown = 101,
     };

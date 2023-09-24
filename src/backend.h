@@ -34,9 +34,12 @@ public:
 
     void frontend_close();
     void on_frontend_close();
+    void frontend_send_buffer_drained();
+    void on_frontend_send_buffer_drained();
 
-    inline int write_buff_size() { return this->async_send_buf_size; }
+    void pause_recv();
 private:
+    bool recv_paused = false;
     char state = 0;
     app *matched_app = nullptr;
     frontend *frontend_conn = nullptr;
