@@ -46,7 +46,8 @@ int app::load_conf(nlohmann::json &apps) {
         }
 
         std::string protocol = itor.value("protocol", "");
-        if (protocol.length() == 0 || protocol != "http") {
+        if (protocol.length() == 0 || (protocol != "http" && protocol != "https"
+                && protocol != "tcp")) {
             fprintf(stderr, "niubix: conf - apps[%d].protocol is invalid!\n", i);
             return -1;
         }
@@ -55,11 +56,16 @@ int app::load_conf(nlohmann::json &apps) {
             return -1;
         }
         port_bind_protocol_map[port] = protocol; // 1个端口只能绑定一种协议
-        cf->protocol = app::http_protocol; // TODO
+        if (protocol == "http")
+            cf->protocol = app::http_protocol;
+        else if (protocol == "https")
+            cf->protocol = app::https_protocol;
+        else if (protocol == "tcp")
+            cf->protocol = app::tcp_protocol;
         app::listen_set[cf->listen] = cf->protocol;
 
 
-        if (cf->protocol == app::http_protocol) {
+        if (cf->protocol == app::http_protocol || cf->protocol == app::https_protocol) {
             cf->http_host = itor.value("http_host", "");
             if (cf->http_host.length() == 0) {
                 fprintf(stderr, "niubix: conf - apps[%d].http_host is empty!\n", i);
@@ -105,11 +111,15 @@ int app::load_conf(nlohmann::json &apps) {
         cf->with_x_real_ip = itor.value("x-real-ip", true);
 
         std::string backend_protocol = itor.value("backend_protocol", "");
-        if (backend_protocol.length() == 0 || backend_protocol != "http") {
+        if (backend_protocol.length() == 0 || (backend_protocol != "http"
+                && backend_protocol != "tcp")) {
             fprintf(stderr, "niubix: conf - apps[%d].backend_protocol is invalid!\n", i);
             return -1;
         }
-        cf->backend_protocol = app::http_protocol; // TODO
+        if (backend_protocol == "http")
+            cf->backend_protocol = app::http_protocol;
+        else if (backend_protocol == "tcp")
+            cf->backend_protocol = app::tcp_protocol;
 
         nlohmann::json &backends = itor["backends"];
         if (backends.empty() || !backends.is_array()) {

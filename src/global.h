@@ -12,6 +12,7 @@ class acceptor;
 class g {
 public:
     static int init(const conf *cf);
+    static int init_ssl();
     static void let_worker_shutdown();
 
     static bool worker_shutdowning;

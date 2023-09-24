@@ -21,7 +21,7 @@
             "?listen": "[]:8080 represents ipv6 + ipv4 bind port 8080",
             // 1. 如果该Port只有一个app, 那么此Port进来的流量直接转发到此app的后端(忽略http_host)
 
-            "protocol": "http", // frontend transfer protocol
+            "protocol": "http", // http/tcp/https, frontend transfer protocol
 
             "balance_policy": "roundrobin", // roundrobin/random/iphash
 
@@ -34,7 +34,7 @@
             "x-forwarded-for": true, // optional, default true
             "x-real-ip": true, // optional, default true
 
-            "backend_protocol": "http", // Worker to backend stranser protocol
+            "backend_protocol": "http", // http/tcp, Worker to backend stranser protocol
 
             "backends": [
                 {

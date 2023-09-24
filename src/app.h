@@ -19,7 +19,9 @@ public:
         iphash      = 3,
     };
     enum {
-     http_protocol = 1,
+        http_protocol   = 1,
+        https_protocol  = 2,
+        tcp_protocol    = 3,
     };
     static int parse_balance_policy(const std::string &s) {
         if (s == "roundrobin") return roundrobin;

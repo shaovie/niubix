@@ -18,7 +18,7 @@
                                   MAKE = make
                                 LINKER = g++
                           INCLUDE_DIRS = -I ./thirdparty
-                                  LIBS = -lpthread
+                                  LIBS = -lpthread -lssl -lcrypto
                             OPTIM_FLAG = -O2
                                    CPP = g++
                                 LFLAGS = -W -fPIC
@@ -43,6 +43,7 @@
                                          io_handle.cpp \
                                          leader.cpp \
                                          log.cpp \
+                                         ssl.cpp \
                                          task_in_worker.cpp \
                                          timer_qheap.cpp \
                                          worker.cpp \
@@ -78,12 +79,12 @@ OBJECTS += $(addprefix $(OBJECT_DIR), $(notdir $(CFILES:%.c=%.o)))
 
 CALL_CFLAGS := $(C_CFLAGS) $(INCLUDE_DIRS) $(MACROS) $(OPTIM_FLAG)
 CPPALL_CFLAGS := $(CPP_CFLAGS) $(INCLUDE_DIRS) $(MACROS) $(OPTIM_FLAG)
-LFLAGS += $(LIB_DIRS) $(LIBS) $(OPTIM_FLAG)
+LFLAGS += $(LIB_DIRS) $(OPTIM_FLAG)
 
 all: checkdir $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(Q)$(LINKER) $(strip $(LFLAGS)) $(MACROS) -o $@ $(OBJECTS)
+	$(Q)$(LINKER) $(strip $(LFLAGS)) $(MACROS) -o $@ $(OBJECTS) $(LIBS)
 
 $(OBJECT_DIR)%.o:%.cpp
 	$(Q)$(CPP) $(strip $(CPPALL_CFLAGS)) -c $< -o $@

@@ -1,11 +1,13 @@
 #include "global.h"
 #include "conf.h"
 #include "log.h"
+#include "app.h"
 #include "worker.h"
 #include "leader.h"
 #include "admin.h"
 #include "acceptor.h"
 #include "worker_timing_event.h"
+#include "ssl.h"
 
 #include <cstring>
 
@@ -22,6 +24,9 @@ leader *g::g_leader = nullptr;
 
 int g::init(const conf *cf) {
     g::cf = cf;
+    if (g::init_ssl() != 0)
+        return -1;
+
     g::main_worker = new worker();
     if (g::main_worker->open(nullptr, 0, g::cf) != 0) {
         log::error("main worker open fail!");
@@ -59,4 +64,16 @@ void g::let_worker_shutdown() {
     // timing check
     worker_shutdown *ws = new worker_shutdown(g::main_worker);
     g::main_worker->schedule_timer(ws, 10, 100);
+}
+int g::init_ssl() {
+    bool has_https_app = false;
+    for (auto ap : app::alls) {
+        if (ap->cf->protocol == app::https_protocol) {
+            has_https_app = true;
+            break;
+        }
+    }
+    if (has_https_app == false)
+        return 0;
+    return ssl::init();
 }
