@@ -15,10 +15,6 @@
 http_frontend::~http_frontend() {
     if (this->partial_buf != nullptr)
         ::free(this->partial_buf);
-    if (this->local_addr != nullptr)
-        ::free(this->local_addr);
-    if (this->remote_addr != nullptr)
-        ::free(this->remote_addr);
     if (this->host != nullptr)
         ::free(this->host);
     if (this->received_data_before_match_app != nullptr)
@@ -27,9 +23,6 @@ http_frontend::~http_frontend() {
     this->wrker->http_frontend_set.erase(this);
 }
 void http_frontend::set_remote_addr(const struct sockaddr *addr, const socklen_t) {
-    if (this->remote_addr == nullptr)
-        this->remote_addr = (char *)::malloc(INET6_ADDRSTRLEN); // TODO optimize
-    this->remote_addr[INET6_ADDRSTRLEN-1] = '\0';
     if (socket::addr_to_string(addr, this->remote_addr, INET6_ADDRSTRLEN) == 0)
         this->remote_addr_len = ::strlen(this->remote_addr);
 }
@@ -38,9 +31,6 @@ bool http_frontend::on_open() {
     this->start_time = this->wrker->now_msec;
     this->state = conn_ok;
 
-    if (this->local_addr == nullptr)
-        this->local_addr = (char *)::malloc(INET6_ADDRSTRLEN); // TODO optimize
-    this->local_addr[INET6_ADDRSTRLEN-1] = '\0';
     if (socket::get_local_addr(this->get_fd(), this->local_addr, INET6_ADDRSTRLEN) != 0) {
         log::error("new conn get local addr fail %s", strerror(errno));
         return this->response_err_and_close(HTTP_ERR_500);

@@ -3,6 +3,8 @@
 
 #include "frontend.h"
 
+#include <netinet/in.h>
+
 // Forward declarations
 class app;
 class acceptor;
@@ -80,8 +82,8 @@ private:
     acceptor *acc = nullptr;
     app *matched_app = nullptr;
     backend *backend_conn = nullptr;
-    char *local_addr = nullptr;
-    char *remote_addr = nullptr;
+    char local_addr[INET6_ADDRSTRLEN];
+    char remote_addr[INET6_ADDRSTRLEN];
     char *partial_buf = nullptr;
     char *received_data_before_match_app = nullptr;
     char *host = nullptr;
